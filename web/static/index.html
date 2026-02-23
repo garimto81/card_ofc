@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trump Card Auto Chess</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- 게임 시작 화면 -->
+<div id="start-screen" class="screen active">
+    <div class="start-box">
+        <h1>Trump Card Auto Chess</h1>
+        <p>52장 트럼프 덱 × TFT 경제 × OFC 3라인 전략</p>
+        <div class="start-form">
+            <label>플레이어 수
+                <select id="num-players-select">
+                    <option value="2" selected>2인</option>
+                    <option value="3">3인</option>
+                    <option value="4">4인</option>
+                </select>
+            </label>
+            <div id="player-names-container">
+                <input type="text" class="player-name-input" placeholder="Player 1" data-index="0">
+                <input type="text" class="player-name-input" placeholder="Player 2" data-index="1">
+            </div>
+            <button id="start-btn" class="btn btn-primary">게임 시작</button>
+        </div>
+    </div>
+</div>
+
+<!-- 메인 게임 화면 -->
+<div id="game-screen" class="screen">
+
+    <!-- 헤더 -->
+    <header id="game-header">
+        <div class="header-left">
+            <span id="round-display">라운드 1</span>
+            <span id="phase-display" class="phase-badge">PREP</span>
+        </div>
+        <div class="header-right">
+            <button id="reset-btn" class="btn btn-danger">새 게임</button>
+        </div>
+    </header>
+
+    <!-- 플레이어 영역 (2컬럼) -->
+    <main id="players-container">
+        <!-- 플레이어 패널은 JS로 동적 생성 -->
+    </main>
+
+</div>
+
+<!-- 전투 결과 모달 -->
+<div id="combat-result-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h2>전투 결과</h2>
+        <div id="combat-result-content"></div>
+        <button id="next-round-btn" class="btn btn-primary" onclick="handleNextRound(0)">다음 라운드</button>
+    </div>
+</div>
+
+<!-- 게임 종료 모달 -->
+<div id="gameover-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <h2>게임 종료!</h2>
+        <div id="gameover-content"></div>
+        <button class="btn btn-primary" onclick="handleReset()">처음으로</button>
+    </div>
+</div>
+
+<!-- 에러 토스트 -->
+<div id="error-toast" class="toast hidden"></div>
+
+<script src="/static/game.js"></script>
+</body>
+</html>

@@ -1,24 +1,22 @@
 """tests/test_serializer.py — web/serializer.py 직렬화 단위 테스트 (12개)"""
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import pytest
-from src.card import Card, Rank, Suit
 from src.board import OFCBoard
+from src.card import Card, Rank, Suit
+from src.combat import CombatResult
 from src.economy import Player
 from src.game import GameState
 from src.pool import SharedCardPool
-from src.combat import CombatResult
 from web.serializer import (
-    serialize_card,
     serialize_board,
-    serialize_player,
-    serialize_game,
+    serialize_card,
     serialize_combat_result,
+    serialize_game,
+    serialize_player,
 )
-
 
 # ── Test 1: 기본 카드 직렬화 ──────────────────────────────────────────────────
 

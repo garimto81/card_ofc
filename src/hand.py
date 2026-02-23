@@ -136,8 +136,12 @@ def beats_suit(attacker: Suit, defender: Suit) -> bool:
     return (defender.value % 4) + 1 == attacker.value
 
 
-def compare_hands(h1: HandResult, h2: HandResult) -> int:
-    """+1: h1 승, -1: h2 승, 0: 무승부"""
+def compare_hands(h1: HandResult, h2: HandResult, reverse_rank: bool = False) -> int:
+    """+1: h1 승, -1: h2 승, 0: 무승부
+
+    reverse_rank=True 시 4단계(high_card_rank) 비교를 역전 (낮은 랭크 우선).
+    1~3단계(핸드 강도, 강화수, 수트 우위)는 역전 없음.
+    """
     # 1단계: 핸드 강도
     if h1.hand_type != h2.hand_type:
         return 1 if h1.hand_type > h2.hand_type else -1
@@ -154,9 +158,10 @@ def compare_hands(h1: HandResult, h2: HandResult) -> int:
         if beats_suit(s2, s1):
             return -1
 
-    # 최고 랭크 비교
+    # 4단계: 최고 랭크 비교 (reverse_rank=True 시 낮은 랭크 우선)
     if h1.high_card_rank != h2.high_card_rank:
-        return 1 if h1.high_card_rank > h2.high_card_rank else -1
+        cmp = 1 if h1.high_card_rank > h2.high_card_rank else -1
+        return -cmp if reverse_rank else cmp
 
     return 0
 

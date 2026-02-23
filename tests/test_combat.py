@@ -229,3 +229,132 @@ class TestCountSynergies:
         ]
         # SPADE 2장만 있음 → 시너지 1개
         assert count_synergies(board) < 3
+
+
+class TestLowCardPower:
+    """S4: low_card_power 이벤트 전투 효과"""
+
+    def setup_method(self):
+        self.resolver = CombatResolver()
+
+    def _make_same_type_boards_diff_rank(self):
+        """같은 핸드 타입 (ONE_PAIR), 강화 없음, 수트 동일 패턴 — rank만 다름"""
+        board_high = OFCBoard()
+        board_high.back = [
+            Card(Rank.ACE, Suit.SPADE),
+            Card(Rank.ACE, Suit.HEART),
+            Card(Rank.KING, Suit.DIAMOND),
+            Card(Rank.QUEEN, Suit.CLUB),
+            Card(Rank.TWO, Suit.SPADE),
+        ]
+        board_high.mid = [
+            Card(Rank.SEVEN, Suit.SPADE),
+            Card(Rank.SEVEN, Suit.HEART),
+            Card(Rank.TWO, Suit.DIAMOND),
+            Card(Rank.THREE, Suit.CLUB),
+            Card(Rank.FOUR, Suit.SPADE),
+        ]
+        board_high.front = [
+            Card(Rank.KING, Suit.CLUB),
+            Card(Rank.QUEEN, Suit.DIAMOND),
+            Card(Rank.JACK, Suit.HEART),
+        ]
+
+        board_low = OFCBoard()
+        board_low.back = [
+            Card(Rank.TWO, Suit.SPADE),
+            Card(Rank.TWO, Suit.HEART),
+            Card(Rank.THREE, Suit.DIAMOND),
+            Card(Rank.FOUR, Suit.CLUB),
+            Card(Rank.FIVE, Suit.SPADE),
+        ]
+        board_low.mid = [
+            Card(Rank.THREE, Suit.SPADE),
+            Card(Rank.THREE, Suit.HEART),
+            Card(Rank.TWO, Suit.DIAMOND),
+            Card(Rank.FOUR, Suit.CLUB),
+            Card(Rank.FIVE, Suit.SPADE),
+        ]
+        board_low.front = [
+            Card(Rank.TWO, Suit.CLUB),
+            Card(Rank.THREE, Suit.DIAMOND),
+            Card(Rank.FOUR, Suit.HEART),
+        ]
+        return board_high, board_low
+
+    def _make_low_card_power_event(self):
+        from dataclasses import dataclass
+
+        @dataclass
+        class MockEvent:
+            id: str
+
+        return MockEvent(id="low_card_power")
+
+    def test_inactive_no_reversal(self):
+        """S4: low_card_power 이벤트 없으면 높은 랭크 우선 정상 비교"""
+        board_high, board_low = self._make_same_type_boards_diff_rank()
+        result_high, result_low = self.resolver.resolve(board_high, board_low, events=[])
+        # 높은 랭크 보드가 이겨야 함 (정상 비교)
+        assert result_high.winner_lines >= result_low.winner_lines
+
+    def test_active_reversal_tiebreak(self):
+        """S4: low_card_power 활성 시 타이브레이커 랭크 역전"""
+        board_high, board_low = self._make_same_type_boards_diff_rank()
+        event = self._make_low_card_power_event()
+        result_high_normal, _ = self.resolver.resolve(board_high, board_low, events=[])
+        result_high_reversed, _ = self.resolver.resolve(
+            board_high, board_low, events=[event]
+        )
+        # low_card_power 활성: 낮은 랭크 우선 → high board가 불리해져야 함
+        assert result_high_reversed.winner_lines <= result_high_normal.winner_lines
+
+    def test_no_reversal_different_hand_type(self):
+        """S4: 핸드 강도 차이가 있으면 low_card_power 역전 없음"""
+        from src.card import Rank, Suit
+        board_flush = OFCBoard()
+        board_flush.back = [
+            Card(Rank.TWO, Suit.SPADE),
+            Card(Rank.FIVE, Suit.SPADE),
+            Card(Rank.SEVEN, Suit.SPADE),
+            Card(Rank.NINE, Suit.SPADE),
+            Card(Rank.KING, Suit.SPADE),
+        ]
+        board_flush.mid = [
+            Card(Rank.ACE, Suit.HEART),
+            Card(Rank.ACE, Suit.DIAMOND),
+            Card(Rank.TWO, Suit.CLUB),
+            Card(Rank.THREE, Suit.SPADE),
+            Card(Rank.FOUR, Suit.HEART),
+        ]
+        board_flush.front = [
+            Card(Rank.KING, Suit.CLUB),
+            Card(Rank.QUEEN, Suit.CLUB),
+            Card(Rank.JACK, Suit.CLUB),
+        ]
+
+        board_pair = OFCBoard()
+        board_pair.back = [
+            Card(Rank.ACE, Suit.CLUB),
+            Card(Rank.ACE, Suit.SPADE),
+            Card(Rank.KING, Suit.HEART),
+            Card(Rank.QUEEN, Suit.HEART),
+            Card(Rank.JACK, Suit.HEART),
+        ]
+        board_pair.mid = [
+            Card(Rank.SEVEN, Suit.SPADE),
+            Card(Rank.SEVEN, Suit.CLUB),
+            Card(Rank.TWO, Suit.HEART),
+            Card(Rank.THREE, Suit.HEART),
+            Card(Rank.FOUR, Suit.SPADE),
+        ]
+        board_pair.front = [
+            Card(Rank.TWO, Suit.CLUB),
+            Card(Rank.THREE, Suit.CLUB),
+            Card(Rank.FOUR, Suit.DIAMOND),
+        ]
+
+        event = self._make_low_card_power_event()
+        result_flush, _ = self.resolver.resolve(board_flush, board_pair, events=[event])
+        # FLUSH가 ONE_PAIR를 이겨야 함 — 핸드 강도 차이 역전 없음
+        assert result_flush.line_results['back'] == 1

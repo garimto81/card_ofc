@@ -20,6 +20,7 @@ class Player:
     augments: list = field(default_factory=list)  # List[Augment]
     in_fantasyland: bool = False
     fantasyland_next: bool = False
+    shop_cards: list = field(default_factory=list)
 
     def __post_init__(self):
         if self.board is None:
@@ -74,6 +75,7 @@ class Player:
             return False
         self.gold -= card.cost
         self.bench.append(card)
+        self.try_star_upgrade()
         return True
 
     def sell_card(self, card: Card, pool: SharedCardPool) -> int:
@@ -85,6 +87,10 @@ class Player:
         self.gold += sell_price
         pool.return_card(card)
         return sell_price
+
+    def apply_damage(self, amount: int) -> None:
+        """HP 차감. 음수 방지 (최소 0)."""
+        self.hp = max(0, self.hp - amount)
 
     def try_star_upgrade(self) -> 'Card | None':
         """같은 카드(랭크+수트) 3장 → 2성 합성 시도 (3성은 불가)"""

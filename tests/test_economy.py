@@ -260,3 +260,79 @@ class TestStarUpgrade:
         ]
         upgraded = player.try_star_upgrade()
         assert upgraded is None
+
+
+class TestApplyDamage:
+    def test_apply_damage_normal(self):
+        """S7: 정상 피해 적용"""
+        player = Player(name="P1", hp=100)
+        player.apply_damage(30)
+        assert player.hp == 70
+
+    def test_apply_damage_zero_floor(self):
+        """S7: hp가 음수가 되지 않음"""
+        player = Player(name="P1", hp=5)
+        player.apply_damage(10)
+        assert player.hp == 0
+
+    def test_apply_damage_zero(self):
+        """S7: 0 피해는 HP 변화 없음"""
+        player = Player(name="P1", hp=50)
+        player.apply_damage(0)
+        assert player.hp == 50
+
+    def test_apply_damage_already_zero(self):
+        """S7: 이미 HP=0인 플레이어에게 피해 적용 시 0 유지"""
+        player = Player(name="P1", hp=0)
+        player.apply_damage(5)
+        assert player.hp == 0
+
+
+class TestStarUpgradeAuto:
+    def test_buy_3_same_card_auto_upgrade(self):
+        """S8: 같은 카드 3회 구매 시 자동 2성 합성"""
+        pool = SharedCardPool()
+        pool.initialize()
+        player = Player(name="P1", gold=30)
+        card = Card(Rank.TWO, Suit.SPADE)  # cost=1
+        player.buy_card(card, pool)
+        player.buy_card(Card(Rank.TWO, Suit.SPADE), pool)
+        player.buy_card(Card(Rank.TWO, Suit.SPADE), pool)
+        assert len(player.bench) == 1
+        assert player.bench[0].stars == 2
+
+    def test_buy_2_same_card_no_upgrade(self):
+        """S8: 2장만 구매 → 합성 없음"""
+        pool = SharedCardPool()
+        pool.initialize()
+        player = Player(name="P1", gold=10)
+        player.buy_card(Card(Rank.TWO, Suit.SPADE), pool)
+        player.buy_card(Card(Rank.TWO, Suit.SPADE), pool)
+        assert len(player.bench) == 2
+        assert player.bench[0].stars == 1
+
+    def test_buy_3rd_triggers_upgrade(self):
+        """S8: 3번째 구매가 자동 합성 트리거"""
+        pool = SharedCardPool()
+        pool.initialize()
+        player = Player(name="P1", gold=30)
+        player.buy_card(Card(Rank.TWO, Suit.SPADE), pool)
+        player.buy_card(Card(Rank.TWO, Suit.SPADE), pool)
+        assert len(player.bench) == 2  # 아직 합성 없음
+        player.buy_card(Card(Rank.TWO, Suit.SPADE), pool)
+        assert len(player.bench) == 1
+        assert player.bench[0].stars == 2
+
+
+class TestShopCards:
+    def test_shop_cards_default_empty(self):
+        """S9: 초기 shop_cards는 빈 리스트"""
+        player = Player(name="P1")
+        assert player.shop_cards == []
+
+    def test_shop_cards_assignable(self):
+        """S9: shop_cards 필드에 카드 목록 할당 가능"""
+        player = Player(name="P1")
+        card = Card(Rank.ACE, Suit.SPADE)
+        player.shop_cards = [card]
+        assert len(player.shop_cards) == 1

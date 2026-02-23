@@ -287,3 +287,230 @@ class TestGenerateMatchups:
         matchups = manager.generate_matchups()
         a, b = matchups[0]
         assert {a, b} == {0, 1}
+
+
+class TestFantasylandReset:
+    """S6: FL 보드 리셋 버그 수정 검증"""
+
+    def _make_state_with_board(self):
+        pool = SharedCardPool()
+        pool.initialize()
+        p1 = Player(name="p1")
+        p2 = Player(name="p2")
+        state = GameState(players=[p1, p2], pool=pool)
+        manager = RoundManager(state)
+        return state, manager, p1, p2
+
+    def _set_nonempty_board(self, player):
+        """플레이어 보드에 카드 1장 추가 (비어있지 않음)"""
+        from src.board import OFCBoard
+        player.board = OFCBoard()
+        player.board.back.append(Card(Rank.ACE, Suit.SPADE))
+
+    def test_fl_player_board_not_reset(self):
+        """S6: fantasyland_next=True → end_round() 후 보드 리셋되지 않음"""
+        state, manager, p1, p2 = self._make_state_with_board()
+        p1.fantasyland_next = True
+        self._set_nonempty_board(p1)
+        manager.end_round()
+        # FL 진입한 p1의 보드는 리셋되지 않아야 함
+        assert len(p1.board.back) > 0
+
+    def test_non_fl_player_board_reset(self):
+        """S6: 일반 플레이어 보드는 end_round() 후 정상 리셋"""
+        state, manager, p1, p2 = self._make_state_with_board()
+        self._set_nonempty_board(p1)
+        manager.end_round()
+        assert len(p1.board.back) == 0
+        assert len(p1.board.mid) == 0
+        assert len(p1.board.front) == 0
+
+    def test_fl_exit_board_reset(self):
+        """S6: FL 탈출 후 다음 end_round()에서 보드 리셋"""
+        state, manager, p1, p2 = self._make_state_with_board()
+        # 첫 번째 라운드: FL 진입
+        p1.fantasyland_next = True
+        manager.end_round()
+        # FL 상태이고 보드에 카드 추가
+        p1.in_fantasyland = True
+        self._set_nonempty_board(p1)
+        # fantasyland_next=False로 FL 탈출 설정
+        p1.fantasyland_next = False
+        # 두 번째 end_round: FL 탈출 → 보드 리셋
+        manager.end_round()
+        # 탈락 처리 후 p1이 있을 경우 (HP>0 유지)
+        # p1이 남아있다면 보드가 리셋되어야 함
+        alive = [p for p in state.players if p.name == "p1"]
+        if alive:
+            assert len(alive[0].board.back) == 0
+
+
+class TestFantasylandKeep:
+    """S1: FL 유지 조건 자동 판정 검증"""
+
+    def _make_fl_state(self):
+        pool = SharedCardPool()
+        pool.initialize()
+        p1 = Player(name="p1")
+        p2 = Player(name="p2")
+        state = GameState(players=[p1, p2], pool=pool)
+        manager = RoundManager(state)
+        return state, manager, p1, p2
+
+    def test_fl_keep_three_of_a_kind(self):
+        """S1: FL 중 Front THREE_OF_A_KIND → 다음 라운드 FL 유지 예약 (fantasyland_next=True)"""
+        state, manager, p1, p2 = self._make_fl_state()
+        from src.board import OFCBoard
+        p1.in_fantasyland = True
+        p1.board = OFCBoard()
+        # Front에 스리카인드 배치
+        p1.board.front = [
+            Card(Rank.ACE, Suit.SPADE),
+            Card(Rank.ACE, Suit.HEART),
+            Card(Rank.ACE, Suit.DIAMOND),
+        ]
+        manager.end_round()
+        # FL 유지 조건 충족: fantasyland_next=True로 다음 라운드 FL 진입 예약
+        assert p1.fantasyland_next is True
+
+    def test_fl_keep_not_met_high_card(self):
+        """S1: FL 중 Front HIGH_CARD → fantasyland_next=False"""
+        state, manager, p1, p2 = self._make_fl_state()
+        from src.board import OFCBoard
+        p1.in_fantasyland = True
+        p1.board = OFCBoard()
+        p1.board.front = [
+            Card(Rank.TWO, Suit.SPADE),
+            Card(Rank.THREE, Suit.HEART),
+            Card(Rank.FIVE, Suit.DIAMOND),
+        ]
+        manager.end_round()
+        assert p1.fantasyland_next is False
+
+
+class TestElimination:
+    """S7: HP 탈락 판정 검증"""
+
+    def _make_state(self):
+        pool = SharedCardPool()
+        pool.initialize()
+        p1 = Player(name="p1")
+        p2 = Player(name="p2")
+        state = GameState(players=[p1, p2], pool=pool)
+        manager = RoundManager(state)
+        return state, manager, p1, p2
+
+    def test_hp_zero_eliminated(self):
+        """S7: HP=0 플레이어는 end_round() 후 state.players에서 제거"""
+        state, manager, p1, p2 = self._make_state()
+        p2.hp = 0
+        manager.end_round()
+        assert p2 not in state.players
+
+    def test_game_over_one_survivor(self):
+        """S7: 1명 생존 → is_game_over()==True"""
+        state, manager, p1, p2 = self._make_state()
+        p2.hp = 0
+        manager.end_round()
+        assert state.is_game_over() is True
+
+
+class TestMatchups5to8:
+    """S5: 5~8인 매칭 확장 검증"""
+
+    def _make_state(self, count: int):
+        pool = SharedCardPool()
+        pool.initialize()
+        players = [Player(name=f"p{i+1}") for i in range(count)]
+        state = GameState(players=players, pool=pool)
+        return state, players
+
+    def test_5player_matchup(self):
+        """S5: 5인 → 2쌍"""
+        state, players = self._make_state(5)
+        manager = RoundManager(state)
+        matchups = manager.generate_matchups_from(players)
+        assert len(matchups) == 2
+
+    def test_6player_matchup(self):
+        """S5: 6인 → 3쌍"""
+        state, players = self._make_state(6)
+        manager = RoundManager(state)
+        matchups = manager.generate_matchups_from(players)
+        assert len(matchups) == 3
+
+    def test_7player_matchup(self):
+        """S5: 7인 → 3쌍"""
+        state, players = self._make_state(7)
+        manager = RoundManager(state)
+        matchups = manager.generate_matchups_from(players)
+        assert len(matchups) == 3
+
+    def test_8player_matchup(self):
+        """S5: 8인 → 4쌍"""
+        state, players = self._make_state(8)
+        manager = RoundManager(state)
+        matchups = manager.generate_matchups_from(players)
+        assert len(matchups) == 4
+
+    def test_matchup_no_duplicate_players(self):
+        """S5: 같은 플레이어가 두 쌍에 중복 매칭되지 않음"""
+        state, players = self._make_state(6)
+        manager = RoundManager(state)
+        matchups = manager.generate_matchups_from(players)
+        all_players = [p for pair in matchups for p in pair]
+        assert len(all_players) == len(set(id(p) for p in all_players))
+
+
+class TestShopDraw:
+    """S9: 샵 시스템 연동 검증"""
+
+    def _make_state(self, count: int = 2):
+        pool = SharedCardPool()
+        pool.initialize()
+        players = [Player(name=f"p{i+1}") for i in range(count)]
+        state = GameState(players=players, pool=pool)
+        manager = RoundManager(state)
+        return state, manager, players
+
+    def test_prep_phase_shop_draw_5_cards(self):
+        """S9: start_prep_phase() 후 각 플레이어 shop_cards 5장"""
+        state, manager, players = self._make_state()
+        manager.start_prep_phase()
+        assert len(players[0].shop_cards) == 5
+
+    def test_lucky_shop_draw_6_cards(self):
+        """S9: lucky_shop 증강체 보유 플레이어는 6장"""
+        from src.augment import SILVER_AUGMENTS
+        state, manager, players = self._make_state()
+        lucky_aug = next((a for a in SILVER_AUGMENTS if a.id == "lucky_shop"), None)
+        if lucky_aug is None:
+            import pytest
+            pytest.skip("lucky_shop 증강체 없음")
+        players[0].augments = [lucky_aug]
+        manager.start_prep_phase()
+        assert len(players[0].shop_cards) == 6
+
+    def test_fl_player_draws_13_cards(self):
+        """S1: in_fantasyland=True 플레이어는 13장 드로우"""
+        state, manager, players = self._make_state()
+        players[0].in_fantasyland = True
+        manager.start_prep_phase()
+        assert len(players[0].shop_cards) == 13
+
+    def test_normal_player_draws_5_cards(self):
+        """S9: 일반 플레이어는 5장"""
+        state, manager, players = self._make_state()
+        manager.start_prep_phase()
+        assert len(players[0].shop_cards) == 5
+
+    def test_return_unplaced_cards(self):
+        """S1: _return_unplaced_cards() 호출 시 미배치 카드 pool 반환"""
+        state, manager, players = self._make_state()
+        players[0].in_fantasyland = True
+        manager.start_prep_phase()
+        initial_count = len(players[0].shop_cards)
+        assert initial_count == 13
+        # 미배치 카드 반환 (보드에 아무것도 배치 안 했으므로 전부 반환)
+        manager._return_unplaced_cards(players[0])
+        assert players[0].shop_cards == []

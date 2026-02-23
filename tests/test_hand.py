@@ -745,3 +745,68 @@ class TestRandomHandsSmoke:
             r1 = compare_hands(h1, h2)
             r2 = compare_hands(h2, h1)
             assert r1 == -r2 or (r1 == 0 and r2 == 0)
+
+
+class TestCompareHandsReverseRank:
+    """S4: compare_hands reverse_rank 파라미터 테스트"""
+
+    def test_compare_hands_reverse_rank_false_default(self):
+        """reverse_rank=False (기본): 높은 랭크 우선"""
+        h_ace = evaluate_hand([
+            Card(Rank.ACE, Suit.SPADE),
+            Card(Rank.ACE, Suit.HEART),
+            Card(Rank.TWO, Suit.CLUB),
+            Card(Rank.THREE, Suit.DIAMOND),
+            Card(Rank.FOUR, Suit.SPADE),
+        ])
+        h_two = evaluate_hand([
+            Card(Rank.TWO, Suit.SPADE),
+            Card(Rank.TWO, Suit.HEART),
+            Card(Rank.THREE, Suit.CLUB),
+            Card(Rank.FOUR, Suit.DIAMOND),
+            Card(Rank.FIVE, Suit.SPADE),
+        ])
+        # 둘 다 ONE_PAIR, 강화수 0, 동일 수트 (모든 수트 포함)
+        # high_card_rank: ACE pair > TWO pair
+        result = compare_hands(h_ace, h_two, reverse_rank=False)
+        assert result == 1  # ACE pair 승리
+
+    def test_compare_hands_reverse_rank_true(self):
+        """reverse_rank=True: 낮은 랭크 우선 (high_card_rank 역전)"""
+        h_ace = evaluate_hand([
+            Card(Rank.ACE, Suit.SPADE),
+            Card(Rank.ACE, Suit.HEART),
+            Card(Rank.TWO, Suit.CLUB),
+            Card(Rank.THREE, Suit.DIAMOND),
+            Card(Rank.FOUR, Suit.SPADE),
+        ])
+        h_two = evaluate_hand([
+            Card(Rank.TWO, Suit.SPADE),
+            Card(Rank.TWO, Suit.HEART),
+            Card(Rank.THREE, Suit.CLUB),
+            Card(Rank.FOUR, Suit.DIAMOND),
+            Card(Rank.FIVE, Suit.SPADE),
+        ])
+        # reverse_rank=True: 낮은 랭크 우선 → TWO pair 승리
+        result = compare_hands(h_ace, h_two, reverse_rank=True)
+        assert result == -1  # TWO pair 승리
+
+    def test_reverse_rank_no_effect_on_different_hand_type(self):
+        """reverse_rank=True여도 핸드 강도 차이가 있으면 역전 없음"""
+        flush = evaluate_hand([
+            Card(Rank.TWO, Suit.SPADE),
+            Card(Rank.FIVE, Suit.SPADE),
+            Card(Rank.SEVEN, Suit.SPADE),
+            Card(Rank.NINE, Suit.SPADE),
+            Card(Rank.KING, Suit.SPADE),
+        ])
+        pair = evaluate_hand([
+            Card(Rank.ACE, Suit.HEART),
+            Card(Rank.ACE, Suit.DIAMOND),
+            Card(Rank.KING, Suit.HEART),
+            Card(Rank.QUEEN, Suit.HEART),
+            Card(Rank.JACK, Suit.HEART),
+        ])
+        # FLUSH > ONE_PAIR, reverse_rank=True여도 핸드 강도 역전 없음
+        result = compare_hands(flush, pair, reverse_rank=True)
+        assert result == 1  # FLUSH 여전히 승리

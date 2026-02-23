@@ -36,49 +36,83 @@ class GameState:
 
 
 class RoundManager:
-    def __init__(self, state: GameState):
+    def __init__(self, state: GameState, augment_selector=None):
         self.state = state
         self.resolver = CombatResolver()
+        self.augment_selector = augment_selector  # None=자동, callable(player, choices)=CLI
 
     def start_prep_phase(self):
-        """준비 단계: 골드 지급"""
+        """준비 단계: 골드 지급 + 상점 드로우"""
         self.state.phase = 'prep'
         for player in self.state.players:
             income = player.round_income()
             player.gold += income
 
-    def start_combat_phase(self) -> list:
-        """전투 단계: 2인 보드 전투"""
-        self.state.phase = 'combat'
-        results = []
-        players = self.state.players
-
-        if len(players) == 2:
-            result_a, result_b = self.resolver.resolve(
-                players[0].board, players[1].board
-            )
-            # HP 피해
-            players[1].hp -= result_a.damage
-            players[0].hp -= result_b.damage
-
-            # 연승/연패 업데이트
-            if result_a.winner_lines > result_b.winner_lines:
-                players[0].win_streak += 1
-                players[0].loss_streak = 0
-                players[1].loss_streak += 1
-                players[1].win_streak = 0
-            elif result_b.winner_lines > result_a.winner_lines:
-                players[1].win_streak += 1
-                players[1].loss_streak = 0
-                players[0].loss_streak += 1
-                players[0].win_streak = 0
+            # 상점 드로우 (S9 + S1 분기)
+            if player.in_fantasyland:
+                # S1: FL 플레이어는 13장 드로우
+                player.shop_cards = self.state.pool.random_draw_n(13, player.level)
             else:
-                # 동률 시 streak 변경 없음
-                pass
+                # S9: 일반 플레이어 — lucky_shop 증강체 시 6장
+                shop_size = 6 if player.has_augment("lucky_shop") else 5
+                player.shop_cards = self.state.pool.random_draw_n(shop_size, player.level)
 
+    def start_combat_phase(self) -> list:
+        """전투 단계: N인 매칭 전투 + apply_damage 사용"""
+        self.state.phase = 'combat'
+
+        active_events = (
+            self.state.holdem_state.active_events
+            if self.state.holdem_state is not None else []
+        )
+
+        active_players = [p for p in self.state.players if p.hp > 0]
+        matchups = self.generate_matchups_from(active_players)
+        self.state.combat_pairs = [
+            (self.state.players.index(p1), self.state.players.index(p2))
+            for p1, p2 in matchups
+        ]
+
+        results = []
+        for p1, p2 in matchups:
+            result_a, result_b = self.resolver.resolve(
+                p1.board, p2.board,
+                hula_a=p1.hula_declared,
+                hula_b=p2.hula_declared,
+                player_a=p1,
+                player_b=p2,
+                events=active_events,
+            )
+            p2.apply_damage(result_a.damage)
+            p1.apply_damage(result_b.damage)
+
+            # 판타지랜드 진입 판정
+            from src.board import check_fantasyland
+            if check_fantasyland(p1.board):
+                p1.fantasyland_next = True
+            if check_fantasyland(p2.board):
+                p2.fantasyland_next = True
+
+            self._update_streaks_players(p1, p2, result_a, result_b)
+            idx_a = self.state.players.index(p1)
+            idx_b = self.state.players.index(p2)
+            self._update_match_history(idx_a, idx_b)
             results.append((result_a, result_b))
 
         return results
+
+    def _update_streaks_players(self, p1, p2, result_a, result_b) -> None:
+        """연승/연패 업데이트 (플레이어 객체 기반)"""
+        if result_a.winner_lines > result_b.winner_lines:
+            p1.win_streak += 1
+            p1.loss_streak = 0
+            p2.loss_streak += 1
+            p2.win_streak = 0
+        elif result_b.winner_lines > result_a.winner_lines:
+            p2.win_streak += 1
+            p2.loss_streak = 0
+            p1.loss_streak += 1
+            p1.win_streak = 0
 
     def _get_bye_counts(self) -> dict:
         result = {}
@@ -146,24 +180,128 @@ class RoundManager:
             return [(active[0], active[1])]
         elif n == 4:
             return self._pick_pairs_avoid_repeat(indices)
+        elif n == 5:
+            return self._pick_pairs_n_players_by_index(indices)
+        elif n == 6:
+            return self._pick_pairs_n_players_by_index(indices)
+        elif n == 7:
+            return self._pick_pairs_n_players_by_index(indices)
+        elif n == 8:
+            return self._pick_pairs_n_players_by_index(indices)
         else:
-            raise ValueError(f"Alpha 지원 플레이어 수: 2~4. 현재: {n}")
+            raise ValueError(f"지원 플레이어 수: 2~8. 현재: {n}")
+
+    def generate_matchups_from(self, active_players: list) -> list:
+        """플레이어 객체 목록 기반 전투 쌍 생성 (S5)."""
+        n = len(active_players)
+        if n < 2:
+            return []
+        if n == 2:
+            return [(active_players[0], active_players[1])]
+        return self._pick_pairs_n_players(active_players)
+
+    def _pick_pairs_n_players(self, active_players: list) -> list:
+        """N인(3~8) 플레이어 객체 기반 쌍 생성. 홀수 시 바이 1명."""
+        players = list(active_players)
+        n = len(players)
+
+        if n % 2 == 1:
+            # 홀수: 바이 카운트 가장 적은 플레이어 선정
+            bye_counts = self._get_bye_counts()
+            bye_player = min(players, key=lambda p: bye_counts.get(p.name, 0))
+            self._record_bye(bye_player.name)
+            players = [p for p in players if p is not bye_player]
+
+        # 짝수 인원 매칭
+        random.shuffle(players)
+        pairs = []
+        available = list(players)
+        while len(available) >= 2:
+            a = available.pop(0)
+            matched = False
+            for i, b in enumerate(available):
+                hist_a = self.state.match_history.get(a.name, [])
+                if hist_a.count(b.name) < 2:
+                    pairs.append((a, b))
+                    available.pop(i)
+                    matched = True
+                    break
+            if not matched:
+                b = available.pop(0)
+                pairs.append((a, b))
+        return pairs
+
+    def _pick_pairs_n_players_by_index(self, indices: list) -> list:
+        """N인(5~8) 인덱스 기반 쌍 생성. generate_matchups() 내부용."""
+        players = self.state.players
+        active = list(indices)
+        n = len(active)
+
+        if n % 2 == 1:
+            bye_counts = self._get_bye_counts()
+            bye_idx = min(active, key=lambda i: bye_counts.get(players[i].name, 0))
+            self._record_bye(players[bye_idx].name)
+            active = [i for i in active if i != bye_idx]
+
+        random.shuffle(active)
+        pairs = []
+        available = list(active)
+        while len(available) >= 2:
+            a = available.pop(0)
+            matched = False
+            for i, b in enumerate(available):
+                hist_a = self.state.match_history.get(players[a].name, [])
+                if hist_a.count(players[b].name) < 2:
+                    pairs.append((a, b))
+                    available.pop(i)
+                    matched = True
+                    break
+            if not matched:
+                b = available.pop(0)
+                pairs.append((a, b))
+        return pairs
+
+    def _return_unplaced_cards(self, player) -> None:
+        """FL 배치 완료 후 보드에 배치되지 않은 카드를 풀로 반환."""
+        placed_ids = set()
+        for line in ['front', 'mid', 'back']:
+            for card in getattr(player.board, line):
+                placed_ids.add(id(card))
+        for card in player.shop_cards:
+            if id(card) not in placed_ids:
+                self.state.pool.return_card(card)
+        player.shop_cards = []
 
     def end_round(self):
         """라운드 종료: 번호 증가, 판타지랜드 전환, 보드 리셋, 증강체 선택, 탈락자 처리"""
         self.state.phase = 'result'
         self.state.round_num += 1
 
+        # Phase 1: 현재 FL 플레이어의 보드에서 유지 조건 판정 (플래그 전환 전)
+        from src.hand import HandType, evaluate_hand
+        fl_keep_players = set()
+        for player in self.state.players:
+            if player.in_fantasyland and player.board.front:
+                front_hand = evaluate_hand(player.board.front)
+                if front_hand.hand_type >= HandType.THREE_OF_A_KIND:
+                    fl_keep_players.add(id(player))
+
+        # Phase 2: 플래그 전환 + 보드 리셋
         from src.board import OFCBoard
         for player in self.state.players:
-            # 판타지랜드 플래그 전환
             if player.fantasyland_next:
                 player.in_fantasyland = True
                 player.fantasyland_next = False
             else:
                 player.in_fantasyland = False
-            # 보드 리셋
-            player.board = OFCBoard()
+            # FL 진입/유지 플레이어는 보드 리셋 제외
+            if not player.in_fantasyland:
+                player.board = OFCBoard()
+
+        # Phase 3: FL 유지 조건 충족 플레이어에게 fantasyland_next 재설정
+        for player in self.state.players:
+            if id(player) in fl_keep_players:
+                player.fantasyland_next = True
 
         # 증강체 선택 페이즈 (라운드 2→3, 3→4, 4→5 종료 시)
         if self.state.round_num in (3, 4, 5):
@@ -178,8 +316,19 @@ class RoundManager:
             self.state.phase = 'prep'
 
     def _offer_augments(self) -> None:
-        """각 플레이어에게 SILVER_AUGMENTS 중 1개 자동 선택. Alpha 범위: 자동 선택."""
+        """각 플레이어에게 SILVER_AUGMENTS 중 3개 제시 후 1개 선택.
+
+        selector 콜백이 있으면 CLI 선택 UI 호출, 없으면 자동으로 첫 번째 선택.
+        """
         from src.augment import SILVER_AUGMENTS
         for player in self.state.players:
-            choices = random.sample(SILVER_AUGMENTS, min(3, len(SILVER_AUGMENTS)))
-            player.add_augment(choices[0])
+            available = [a for a in SILVER_AUGMENTS if not player.has_augment(a.id)]
+            choices = random.sample(available, min(3, len(available)))
+            if not choices:
+                continue
+            if self.augment_selector is not None:
+                selected = self.augment_selector(player, choices)
+            else:
+                selected = choices[0]
+            if selected is not None:
+                player.add_augment(selected)

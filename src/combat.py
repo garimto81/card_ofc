@@ -65,6 +65,12 @@ class CombatResolver:
         line_results_a = {}
         line_results_b = {}
 
+        # low_card_power 이벤트: 타이브레이커 랭크 비교 역전 (낮은 랭크 우선)
+        low_card_power_active = (
+            events is not None
+            and any(getattr(e, 'id', None) == "low_card_power" for e in events)
+        )
+
         for line in ['back', 'mid', 'front']:
             cards_a = getattr(board_a, line)
             cards_b = getattr(board_b, line)
@@ -76,7 +82,7 @@ class CombatResolver:
                     h_a = apply_foul_penalty(h_a)
                 if line in foul_b:
                     h_b = apply_foul_penalty(h_b)
-                cmp = compare_hands(h_a, h_b)
+                cmp = compare_hands(h_a, h_b, reverse_rank=low_card_power_active)
             elif cards_a:
                 cmp = 1
             elif cards_b:

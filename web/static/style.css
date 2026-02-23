@@ -89,22 +89,49 @@ body {
 
 /* ── 플레이어 컨테이너 ─────────────────────────────────────────────────────── */
 #players-container {
-    display: flex;
-    gap: 16px;
-    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 12px;
     min-height: calc(100vh - 53px);
     align-items: flex-start;
 }
 
+/* 4인 이하: 2열 그리드 */
+#players-container.layout-2 { grid-template-columns: repeat(2, 1fr); }
+#players-container.layout-3 { grid-template-columns: repeat(3, 1fr); }
+#players-container.layout-4 { grid-template-columns: repeat(4, 1fr); }
+/* 5~8인: 4열 2행 그리드 */
+#players-container.layout-5,
+#players-container.layout-6,
+#players-container.layout-7,
+#players-container.layout-8 { grid-template-columns: repeat(4, 1fr); }
+
 /* ── 플레이어 패널 ─────────────────────────────────────────────────────────── */
 .player-panel {
-    flex: 1;
     background: var(--panel);
     border-radius: 12px;
     padding: 16px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     min-width: 0;
+    overflow: hidden;
 }
+
+/* 8인 레이아웃에서 카드/패널 축소 */
+.eight-player-layout .player-panel {
+    padding: 10px;
+}
+.eight-player-layout .card-slot {
+    width: 38px;
+    height: 54px;
+}
+.eight-player-layout .card-rank { font-size: 0.82rem; }
+.eight-player-layout .suit-symbol { font-size: 0.9rem; }
+.eight-player-layout .card-stars { font-size: 0.5rem; }
+.eight-player-layout .cost-badge { font-size: 0.5rem; }
+.eight-player-layout .board-line { gap: 3px; padding: 5px; }
+.eight-player-layout .player-name { font-size: 0.88rem; }
+.eight-player-layout .player-stats { font-size: 0.74rem; gap: 6px; }
 
 /* 플레이어 상태 표시 */
 .player-header {

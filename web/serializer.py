@@ -8,7 +8,7 @@ if _project_root not in sys.path:
 
 from src.board import OFCBoard  # noqa: E402
 from src.combat import CombatResult  # noqa: E402
-from src.economy import Player  # noqa: E402
+from src.economy import _XP_TABLE, Player  # noqa: E402
 from src.game import GameState  # noqa: E402
 
 # 랭크 표시 문자열 매핑 (rank.value → 표시 문자)
@@ -76,6 +76,7 @@ def serialize_player(player: Player, player_id: int) -> dict:
         'gold': player.gold,
         'level': player.level,
         'xp': player.xp,
+        'xp_needed': _XP_TABLE.get(player.level),
         'win_streak': player.win_streak,
         'loss_streak': player.loss_streak,
         'board': serialize_board(player.board),
@@ -87,6 +88,7 @@ def serialize_player(player: Player, player_id: int) -> dict:
         ],
         'in_fantasyland': player.in_fantasyland,
         'hula_declared': player.hula_declared,
+        'pineapple_cards': [serialize_card(c) for c in player.pineapple_cards],
     }
 
 

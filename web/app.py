@@ -53,7 +53,7 @@ def start_game():
 
     _pool = SharedCardPool()
     _pool.initialize()
-    players = [Player(name=names[i]) for i in range(num_players)]
+    players = [Player(name=names[i], pool=_pool) for i in range(num_players)]
     _game_state = GameState(players=players, pool=_pool)
     _round_manager = RoundManager(_game_state)
     _round_manager.start_prep_phase()
@@ -107,6 +107,15 @@ def action():
             return _handle_ready(player_id, player)
         elif action_type == 'next_round':
             return _handle_next_round()
+        elif action_type == 'pineapple_pick':
+            indices = data.get('indices', [])
+            player.pineapple_pick(indices)
+            return _ok_response()
+        elif action_type == 'buy_xp':
+            result = player.buy_xp()
+            if not result:
+                return jsonify({"error": "Cannot buy XP (insufficient gold or max level)"}), 400
+            return _ok_response()
         else:
             abort(400, f"알 수 없는 action_type: '{action_type}'")
     except ValueError as e:
@@ -242,6 +251,10 @@ def _handle_ready(player_id: int, player):
     _ready_flags[player_id] = True
 
     if all(_ready_flags.values()):
+        # 미픽 pineapple_cards 자동 반환
+        for p in _game_state.players:
+            if p.pineapple_cards:
+                p.auto_discard_pineapple()
         # 모든 플레이어 준비 완료 → 전투 실행
         results = _round_manager.start_combat_phase()
         _last_combat_results = results

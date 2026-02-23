@@ -259,6 +259,42 @@ function renderShop(player) {
     return container;
 }
 
+/* ── Pineapple 드래프트 렌더링 ────────────────────────────────────────────────── */
+
+function renderPineapple(player) {
+    const container = document.createElement('div');
+    container.className = 'shop-container';
+    container.style.cssText = 'border:2px solid var(--accent); border-radius:8px; padding:8px;';
+
+    const header = document.createElement('div');
+    header.className = 'shop-header';
+
+    const title = document.createElement('h4');
+    title.textContent = 'Pineapple 드래프트 (2장 선택 후 1장 버림)';
+    title.style.color = 'var(--accent)';
+    header.append(title);
+    container.append(header);
+
+    const cards = document.createElement('div');
+    cards.className = 'shop-cards';
+
+    player.pineapple_cards.forEach((card, idx) => {
+        const slot = buildCardSlot(card, {
+            type: 'pineapple',
+            index: idx,
+            playerId: player.id,
+        }, null);
+        slot.title = '클릭하여 버릴 카드 선택';
+        if (gameState.phase === 'prep') {
+            slot.addEventListener('click', () => handlePineappleDiscard(player.id, idx));
+        }
+        cards.append(slot);
+    });
+
+    container.append(cards);
+    return container;
+}
+
 /* ── 플레이어 패널 렌더링 ─────────────────────────────────────────────────────── */
 
 function renderPlayer(player) {
@@ -288,7 +324,8 @@ function renderPlayer(player) {
 
     const lvEl = document.createElement('span');
     lvEl.className = 'stat-item level';
-    lvEl.textContent = `Lv.${player.level}`;
+    const xpNeeded = player.xp_needed != null ? player.xp_needed : '?';
+    lvEl.textContent = `Lv.${player.level} (${player.xp}/${xpNeeded}XP)`;
 
     const streakEl = document.createElement('span');
     streakEl.className = 'stat-item streak';
@@ -310,15 +347,37 @@ function renderPlayer(player) {
     // 상점
     panel.append(renderShop(player));
 
-    // 준비 완료 버튼
+    // Pineapple 드래프트 UI
+    if (player.pineapple_cards && player.pineapple_cards.length > 0) {
+        panel.append(renderPineapple(player));
+    }
+
+    // 준비 완료 버튼 + 레벨업 버튼
     if (gameState.phase === 'prep') {
+        const actionRow = document.createElement('div');
+        actionRow.style.cssText = 'display:flex; gap:6px; margin-top:8px;';
+
+        // 레벨업 버튼 (XP 구매: 4골드)
+        const lvUpBtn = document.createElement('button');
+        const xpNeededVal = player.xp_needed;
+        const canLevelUp = player.gold >= 4 && xpNeededVal != null;
+        lvUpBtn.className = 'btn btn-success btn-sm';
+        lvUpBtn.textContent = '레벨업 (4G)';
+        lvUpBtn.disabled = !canLevelUp;
+        lvUpBtn.title = `현재 XP: ${player.xp}/${xpNeededVal ?? '최대'}`;
+        lvUpBtn.addEventListener('click', () => handleBuyXP(player.id));
+        actionRow.append(lvUpBtn);
+
         const isReady = gameState.ready_flags && gameState.ready_flags[String(player.id)];
         const readyBtn = document.createElement('button');
         readyBtn.className = 'btn btn-ready' + (isReady ? ' ready' : '');
+        readyBtn.style.cssText = 'flex:1; margin-top:0;';
         readyBtn.textContent = isReady ? '준비 완료!' : '준비';
         readyBtn.disabled = isReady;
         readyBtn.addEventListener('click', () => handleReadyClick(player.id));
-        panel.append(readyBtn);
+        actionRow.append(readyBtn);
+
+        panel.append(actionRow);
     }
 
     return panel;
@@ -329,6 +388,15 @@ function renderPlayer(player) {
 function renderAll(state) {
     const container = document.getElementById('players-container');
     container.innerHTML = '';
+
+    const n = state.players.length;
+    // 레이아웃 클래스 초기화 후 적용
+    container.className = '';
+    container.classList.add(`layout-${Math.min(n, 8)}`);
+    if (n >= 5) {
+        container.classList.add('eight-player-layout');
+    }
+
     for (const player of state.players) {
         container.append(renderPlayer(player));
     }
@@ -429,6 +497,14 @@ function handleReadyClick(playerId) {
     sendAction(playerId, 'ready', {});
 }
 
+function handlePineappleDiscard(playerId, cardIndex) {
+    sendAction(playerId, 'pineapple_discard', { card_index: cardIndex });
+}
+
+function handleBuyXP(playerId) {
+    sendAction(playerId, 'buy_xp', {});
+}
+
 async function handleNextRound(playerId) {
     const state = await sendAction(playerId, 'next_round', {});
     if (state) {
@@ -440,6 +516,10 @@ async function handleNextRound(playerId) {
 async function handleStartGame() {
     const selectEl = document.getElementById('num-players-select');
     const numPlayers = parseInt(selectEl.value, 10);
+    if (numPlayers < 2 || numPlayers > 8) {
+        showError('플레이어 수는 2~8명이어야 합니다');
+        return;
+    }
     const nameInputs = document.querySelectorAll('.player-name-input');
     const names = Array.from(nameInputs).map(inp => inp.value.trim()).filter(Boolean);
 

@@ -15,6 +15,35 @@ class CombatResult:
     stop_applied: bool = False   # 스톱(×8) 선언 여부
 
 
+def get_suit_synergy_level(board: OFCBoard, suit) -> int:
+    """특정 수트의 시너지 레벨 반환 (0, 1, 2, 3).
+    2~3장=레벨1, 4~5장=레벨2, 6장+=레벨3
+    """
+    all_cards = board.back + board.mid + board.front
+    count = sum(1 for c in all_cards if c.suit == suit)
+    if count >= 6:
+        return 3
+    elif count >= 4:
+        return 2
+    elif count >= 2:
+        return 1
+    return 0
+
+
+def apply_spade_synergy_tiebreak(attacker_board: OFCBoard, defender_board: OFCBoard) -> int:
+    """♠ 전사 시너지 동률 타이브레이커.
+    Returns: 1=attacker 승리, -1=defender 승리, 0=동률 유지
+    """
+    from src.card import Suit
+    atk_level = get_suit_synergy_level(attacker_board, Suit.SPADE)
+    def_level = get_suit_synergy_level(defender_board, Suit.SPADE)
+    if atk_level > def_level:
+        return 1
+    elif def_level > atk_level:
+        return -1
+    return 0
+
+
 def count_synergies(board: OFCBoard, player=None) -> int:
     """같은 수트 2장 이상인 수트 수 = 활성 시너지 수.
     suit_mystery 증강체 보유 시 +1 (최대 4).

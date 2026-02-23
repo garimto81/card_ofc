@@ -4,6 +4,9 @@ from dataclasses import dataclass, field
 from src.card import Card
 from src.pool import SharedCardPool
 
+# 레벨별 필요 XP 테이블 (레벨 9는 최대)
+_XP_TABLE: dict[int, int] = {1: 2, 2: 4, 3: 6, 4: 10, 5: 20, 6: 36, 7: 56, 8: 80}
+
 
 @dataclass
 class Player:
@@ -21,6 +24,8 @@ class Player:
     in_fantasyland: bool = False
     fantasyland_next: bool = False
     shop_cards: list = field(default_factory=list)
+    pineapple_cards: list = field(default_factory=list)
+    pool: object = None  # SharedCardPool
 
     def __post_init__(self):
         if self.board is None:
@@ -91,6 +96,56 @@ class Player:
     def apply_damage(self, amount: int) -> None:
         """HP 차감. 음수 방지 (최소 0)."""
         self.hp = max(0, self.hp - amount)
+
+    def calc_roll_cost(self, club_synergy_level: int = 0) -> int:
+        """♣ 사냥 시너지 레벨에 따른 리롤 비용 반환.
+        레벨0~1: 2골드, 레벨2: 1골드, 레벨3: 0골드(무료)
+        """
+        if club_synergy_level >= 3:
+            return 0
+        elif club_synergy_level >= 2:
+            return 1
+        return 2
+
+    def pineapple_pick(self, indices: list) -> None:
+        """2장 선택 → bench 이동, 나머지 1장 → pool 반환."""
+        if len(indices) != 2:
+            raise ValueError(f"Pineapple pick requires exactly 2 indices, got {len(indices)}")
+        if any(i < 0 or i >= len(self.pineapple_cards) for i in indices):
+            raise IndexError("Invalid pineapple index")
+        kept = [self.pineapple_cards[i] for i in sorted(set(indices))]
+        discarded = [c for i, c in enumerate(self.pineapple_cards) if i not in set(indices)]
+        self.bench.extend(kept)
+        for card in discarded:
+            if self.pool is not None:
+                self.pool.return_card(card)
+        self.pineapple_cards = []
+
+    def auto_discard_pineapple(self) -> None:
+        """미픽 pineapple_cards 전부 풀 반환 (ready 시 자동 호출)."""
+        for card in self.pineapple_cards:
+            if self.pool is not None:
+                self.pool.return_card(card)
+        self.pineapple_cards = []
+
+    def buy_xp(self, cost: int = 4) -> bool:
+        """XP 구매: cost 골드 소모 → XP +cost 획득 → 자동 레벨업 체크.
+        레벨 9(최대)이거나 골드 부족 시 False 반환.
+        """
+        if self.level >= 9:
+            return False
+        if self.gold < cost:
+            return False
+        self.gold -= cost
+        self.xp += cost
+        self._try_level_up()
+        return True
+
+    def _try_level_up(self) -> None:
+        """XP 임계값 충족 시 자동 레벨업. 초과 XP 이월. 연속 레벨업 처리."""
+        while self.level < 9 and self.xp >= _XP_TABLE[self.level]:
+            self.xp -= _XP_TABLE[self.level]
+            self.level += 1
 
     def try_star_upgrade(self) -> 'Card | None':
         """같은 카드(랭크+수트) 3장 → 2성 합성 시도 (3성은 불가)"""

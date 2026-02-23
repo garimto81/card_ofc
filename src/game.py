@@ -48,11 +48,18 @@ class RoundManager:
             income = player.round_income()
             player.gold += income
 
+            # pool 참조 주입 (pineapple_pick/auto_discard_pineapple에서 사용)
+            if player.pool is None:
+                player.pool = self.state.pool
+
             # 상점 드로우 (S9 + S1 분기)
             if player.in_fantasyland:
-                # S1: FL 플레이어는 13장 드로우
+                # S1: FL 플레이어는 13장 드로우 (Pineapple 스킵)
                 player.shop_cards = self.state.pool.random_draw_n(13, player.level)
+                player.pineapple_cards = []
             else:
+                # Pineapple 드래프트: 3장 공개
+                player.pineapple_cards = self.state.pool.random_draw_n(3, player.level)
                 # S9: 일반 플레이어 — lucky_shop 증강체 시 6장
                 shop_size = 6 if player.has_augment("lucky_shop") else 5
                 player.shop_cards = self.state.pool.random_draw_n(shop_size, player.level)

@@ -1522,6 +1522,81 @@ function checkFoul(board: OFCBoard): boolean {
 
 ---
 
+---
+
+## 20. Godot 4.x MVP 구현 계획
+
+**작성일**: 2026-02-26
+**상태**: 구현 중 (M1 — 핵심 게임 루프)
+
+### 20.1 MVP 범위
+
+| 항목 | MVP 포함 | MVP 제외 |
+|------|----------|---------|
+| 플레이어 수 | 1v1 (플레이어 vs AI) | 8인 멀티플레이어 |
+| 라운드 | 무제한 (HP 소진 시 종료) | PvE 크리프, 캐러셀, 특수 라운드 |
+| 상점 | 5장 구매/리롤(2G)/레벨업(4G XP) | 상점 잠금 |
+| 경제 | 기본 5G + 이자 + 연승/연패 보너스 | 증강체, 아이템 |
+| OFC 보드 | Back(5칸)/Mid(5칸)/Front(3칸) 배치 | 드래그앤드롭 (클릭 선택 방식) |
+| 핸드 판정 | HIGH_CARD~ROYAL_FLUSH, Foul 패널티 | 홀덤 이벤트, 로얄티 보너스 |
+| 별 강화 | 같은 카드 3장 → stars+1 (최대 3성) | 포함 |
+| 전투 | 자동 핸드 비교, 데미지 계산, 훌라 감지 | 스톱 선언, 수트 런 시너지 |
+| HP | 100HP / 플레이어+AI | 포함 |
+| AI | 그리디 AI (최고비용 카드 우선 구매, 순서대로 배치) | 전략 AI |
+
+### 20.2 기술 스택
+
+| 레이어 | 기술 |
+|--------|------|
+| 엔진 | Godot 4.3 (Forward Plus) |
+| 언어 | GDScript (typed) |
+| 해상도 | 1280×720 |
+| 패키지 | 없음 (순수 Godot) |
+| 카드 비주얼 | ColorRect + Label (코드 생성, 에셋 없음) |
+
+### 20.3 프로젝트 구조
+
+```
+godot/
+├── project.godot
+├── scripts/
+│   ├── Card.gd              # 카드 데이터 (Rank/Suit enum, cost, stars)
+│   ├── HandEvaluator.gd     # 포커 핸드 평가 (HIGH_CARD~ROYAL_FLUSH)
+│   ├── Pool.gd              # 공유 카드 풀 (52종×등급별 복사본)
+│   ├── Economy.gd           # 경제 (골드, 이자, 레벨, 연승/연패)
+│   ├── Combat.gd            # 전투 판정 (3라인, Foul, 훌라)
+│   ├── SimpleAI.gd          # 그리디 AI
+│   ├── GameController.gd    # 메인 게임 로직 (Phase: PREP→COMBAT→RESULT)
+│   ├── CardNode.gd          # 카드 시각 노드
+│   └── GameUI.gd            # UI 컨트롤러
+└── scenes/
+    ├── Main.tscn            # 진입점
+    ├── GameScene.tscn       # 메인 게임 씬 (보드+상점+HUD)
+    └── CardNode.tscn        # 카드 컴포넌트 씬
+```
+
+### 20.4 구현 상태
+
+| 모듈 | 상태 | 비고 |
+|------|------|------|
+| Card.gd | 완료 | - |
+| HandEvaluator.gd | 완료 | Python hand.py 포팅 |
+| Pool.gd | 완료 | 레벨별 드롭률 포함 |
+| Economy.gd | 완료 | - |
+| Combat.gd | 완료 | 훌라 간소화 (수트 3장+) |
+| SimpleAI.gd | 완료 | - |
+| GameController.gd | 완료 | - |
+| CardNode.gd + .tscn | 완료 | - |
+| GameScene.tscn | 완료 | - |
+| GameUI.gd | 완료 | - |
+
+## Changelog
+
+| 날짜 | 버전 | 변경 내용 | 결정 근거 |
+|------|------|-----------|----------|
+| 2026-02-26 | v5.0-godot | Godot 4.x MVP 구현 계획 추가 | 게임 엔진 기반 플레이어블 프로토타입 요구 |
+| 2026-02-19 | v4.0 | TFT Backbone 전면 재설계, 공유 풀 + 수트 합성 | - |
+
 *문서 끝 — Trump Card Auto Chess PRD v4.0.0*
 
 *v3.0 대비 주요 변경:*

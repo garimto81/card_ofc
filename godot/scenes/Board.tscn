@@ -1,0 +1,63 @@
+[gd_scene load_steps=2 format=3 uid="uid://board001"]
+
+[ext_resource type="Script" path="res://scripts/BoardView.gd" id="1_boardview"]
+
+[node name="Board" type="VBoxContainer"]
+custom_minimum_size = Vector2(880, 560)
+script = ExtResource("1_boardview")
+
+[node name="BackSection" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="BackLabel" type="Label" parent="BackSection"]
+layout_mode = 2
+text = "[BACK] 5칸"
+theme_override_font_sizes/font_size = 13
+modulate = Color(0.8, 1.0, 0.8, 1)
+
+[node name="BackLine" type="HBoxContainer" parent="BackSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 130)
+theme_override_constants/separation = 6
+
+[node name="MidSection" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="MidLabel" type="Label" parent="MidSection"]
+layout_mode = 2
+text = "[MID] 5칸"
+theme_override_font_sizes/font_size = 13
+modulate = Color(0.8, 0.9, 1.0, 1)
+
+[node name="MidLine" type="HBoxContainer" parent="MidSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 130)
+theme_override_constants/separation = 6
+
+[node name="FrontSection" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="FrontLabel" type="Label" parent="FrontSection"]
+layout_mode = 2
+text = "[FRONT] 3칸"
+theme_override_font_sizes/font_size = 13
+modulate = Color(1.0, 0.9, 0.7, 1)
+
+[node name="FrontLine" type="HBoxContainer" parent="FrontSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 130)
+theme_override_constants/separation = 6
+
+[node name="BenchSection" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="BenchLabel" type="Label" parent="BenchSection"]
+layout_mode = 2
+text = "[BENCH]"
+theme_override_font_sizes/font_size = 13
+modulate = Color(0.7, 0.7, 0.7, 1)
+
+[node name="BenchArea" type="HBoxContainer" parent="BenchSection"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 130)
+theme_override_constants/separation = 6

@@ -104,11 +104,11 @@ custom_minimum_size = Vector2(0, 130)
 [node name="ButtonRow" type="HBoxContainer" parent="RightPanel"]
 layout_mode = 2
 
-[node name="BuyXPBtn" type="Button" parent="ButtonRow"]
+[node name="BuyXPBtn" type="Button" parent="RightPanel/ButtonRow"]
 layout_mode = 2
 text = "XP구매(4G)"
 
-[node name="RerollBtn" type="Button" parent="ButtonRow"]
+[node name="RerollBtn" type="Button" parent="RightPanel/ButtonRow"]
 layout_mode = 2
 text = "리롤(2G)"
 

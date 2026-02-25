@@ -67,7 +67,7 @@ func suit_symbol() -> String:
 func is_red() -> bool:
 	return suit == Suit.HEART or suit == Suit.DIAMOND
 
-func to_string() -> String:
+func _to_string() -> String:
 	var star_str = "★".repeat(stars)
 	return "%s%s%s" % [rank_name(), suit_symbol(), star_str]
 

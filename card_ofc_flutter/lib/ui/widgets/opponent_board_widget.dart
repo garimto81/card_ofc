@@ -16,23 +16,38 @@ class OpponentBoardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${opponent.name} (${opponent.score}pt)',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            _buildMiniLine(opponent.board.top, OFCBoard.topMaxCards),
-            const SizedBox(height: 2),
-            _buildMiniLine(opponent.board.mid, OFCBoard.midMaxCards),
-            const SizedBox(height: 2),
-            _buildMiniLine(opponent.board.bottom, OFCBoard.bottomMaxCards),
-          ],
+    return SizedBox(
+      width: 160,
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (opponent.isInFantasyland)
+                    Icon(Icons.auto_awesome, size: 14, color: Colors.amber[400]),
+                  if (opponent.isInFantasyland) const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      '${opponent.name} (${opponent.score}pt)',
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              _buildMiniLine(opponent.board.top, OFCBoard.topMaxCards),
+              const SizedBox(height: 2),
+              _buildMiniLine(opponent.board.mid, OFCBoard.midMaxCards),
+              const SizedBox(height: 2),
+              _buildMiniLine(opponent.board.bottom, OFCBoard.bottomMaxCards),
+            ],
+          ),
         ),
       ),
     );
@@ -40,14 +55,14 @@ class OpponentBoardWidget extends StatelessWidget {
 
   Widget _buildMiniLine(List<ofc.Card> cards, int maxCards) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(maxCards, (i) {
         if (i < cards.length) {
           return Padding(
             padding: const EdgeInsets.all(1),
             child: SizedBox(
-              width: 28,
-              height: 36,
+              width: 24,
+              height: 32,
               child: CardWidget(
                 card: cards[i],
                 faceDown: hideCards,
@@ -58,8 +73,8 @@ class OpponentBoardWidget extends StatelessWidget {
         return Padding(
           padding: const EdgeInsets.all(1),
           child: Container(
-            width: 28,
-            height: 36,
+            width: 24,
+            height: 32,
             decoration: BoxDecoration(
               color: Colors.grey[100],
               borderRadius: BorderRadius.circular(3),

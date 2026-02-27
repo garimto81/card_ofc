@@ -10,8 +10,9 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: CardWidget(card: card)),
       ));
-      expect(find.text('A'), findsOneWidget);
-      expect(find.text('♠'), findsOneWidget);
+      // New card design: rank in top-left + bottom-right (2), suit in top-left + center + bottom-right (3)
+      expect(find.text('A'), findsNWidgets(2));
+      expect(find.text('\u2660'), findsNWidgets(3));
     });
 
     testWidgets('T2: 뒷면 카드 표시 - 랭크/수트 없음', (tester) async {
@@ -20,15 +21,16 @@ void main() {
         home: Scaffold(body: CardWidget(card: card, faceDown: true)),
       ));
       expect(find.text('A'), findsNothing);
-      expect(find.text('♠'), findsNothing);
+      // Back face has a decorative spade symbol, but rank text must not appear
+      expect(find.text('A'), findsNothing);
     });
 
-    testWidgets('T3: draggable=true 시 LongPressDraggable 존재', (tester) async {
+    testWidgets('T3: draggable=true 시 Draggable 존재', (tester) async {
       const card = ofc.Card(rank: ofc.Rank.king, suit: ofc.Suit.heart);
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: CardWidget(card: card, draggable: true)),
       ));
-      expect(find.byType(LongPressDraggable<ofc.Card>), findsOneWidget);
+      expect(find.byType(Draggable<ofc.Card>), findsOneWidget);
     });
 
     testWidgets('T4: 하트/다이아몬드 카드 빨간색', (tester) async {
@@ -36,8 +38,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: CardWidget(card: card)),
       ));
-      expect(find.text('Q'), findsOneWidget);
-      expect(find.text('♥'), findsOneWidget);
+      expect(find.text('Q'), findsNWidgets(2));
+      expect(find.text('\u2665'), findsNWidgets(3));
     });
 
     testWidgets('T5: onTap 콜백 호출', (tester) async {
@@ -46,7 +48,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: CardWidget(card: card, onTap: () => tapped = true)),
       ));
-      await tester.tap(find.text('10'));
+      await tester.tap(find.text('10').first);
       expect(tapped, isTrue);
     });
   });

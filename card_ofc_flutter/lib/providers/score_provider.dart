@@ -9,9 +9,12 @@ part 'score_provider.g.dart';
 @riverpod
 Map<String, int>? roundScores(Ref ref) {
   final gameState = ref.watch(gameNotifierProvider);
-  if (gameState.phase != GamePhase.scoring) return null;
+  final showScores = gameState.phase == GamePhase.scoring ||
+      gameState.phase == GamePhase.fantasyland ||
+      gameState.phase == GamePhase.gameOver;
+  if (!showScores) return null;
 
   return {
-    for (final p in gameState.players) p.id: p.score,
+    for (final p in gameState.players) p.name: p.score,
   };
 }

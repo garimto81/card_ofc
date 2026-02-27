@@ -25,7 +25,7 @@ class GameController {
   // ──────────────────────────────────────────────
 
   /// 게임 시작: 덱 셔플, 플레이어 초기화 → 새 GameState 반환
-  GameState startGame(List<String> playerNames) {
+  GameState startGame(List<String> playerNames, {int targetHands = 5}) {
     _deck.reset();
     final players = playerNames.asMap().entries.map((entry) {
       return Player(
@@ -42,6 +42,7 @@ class GameController {
       currentPlayerIndex: 0,
       phase: GamePhase.dealing,
       roundPhase: RoundPhase.initial,
+      targetHands: targetHands,
     );
     return _state;
   }
@@ -201,6 +202,38 @@ class GameController {
     _state = _state.copyWith(
       players: updatedPlayers,
       phase: GamePhase.fantasyland,
+    );
+    return _state;
+  }
+
+  /// 핸드 종료: 점수 계산 → FL 확인 → gameOver 전환 (multi-hand 지원)
+  GameState finishHand() {
+    scoreRound();
+    checkFantasyland();
+    final hasFL = _state.players.any((p) => p.isInFantasyland);
+    if (!hasFL && _state.handNumber >= _state.targetHands) {
+      _state = _state.copyWith(phase: GamePhase.gameOver);
+    }
+    return _state;
+  }
+
+  /// 다음 핸드 시작: 보드/핸드 리셋, 누적 점수 유지, handNumber 증가
+  GameState startNextHand() {
+    _deck.reset();
+    final resetPlayers = _state.players.map((p) {
+      return p.copyWith(
+        board: OFCBoard(),
+        hand: [],
+      );
+    }).toList();
+    _state = _state.copyWith(
+      players: resetPlayers,
+      currentRound: 0,
+      currentPlayerIndex: 0,
+      phase: GamePhase.dealing,
+      roundPhase: RoundPhase.initial,
+      handNumber: _state.handNumber + 1,
+      discardPile: [],
     );
     return _state;
   }

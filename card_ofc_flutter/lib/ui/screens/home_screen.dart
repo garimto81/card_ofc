@@ -2,18 +2,42 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/game_provider.dart';
 import 'game_screen.dart';
+import 'lobby_screen.dart';
+import 'settings_screen.dart';
+import 'tutorial_screen.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  int _selectedHands = 5;
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.teal[900],
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+      body: Stack(
+        children: [
+          Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: IconButton(
+                icon: const Icon(Icons.settings, color: Colors.white),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                ),
+              ),
+            ),
+          ),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
             const Text(
               'OFC Pineapple',
               style: TextStyle(
@@ -27,7 +51,29 @@ class HomeScreen extends ConsumerWidget {
               'Open Face Chinese Poker',
               style: TextStyle(fontSize: 16, color: Colors.teal[200]),
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: 32),
+            // Hand count selector
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [3, 5, 10].map((count) {
+                final isSelected = _selectedHands == count;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: ChoiceChip(
+                    label: Text('$count'),
+                    selected: isSelected,
+                    onSelected: (_) => setState(() => _selectedHands = count),
+                    selectedColor: Colors.teal[400],
+                    labelStyle: TextStyle(
+                      color: isSelected ? Colors.white : Colors.teal[200],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            Text('Hands',
+                style: TextStyle(color: Colors.teal[300], fontSize: 12)),
+            const SizedBox(height: 16),
             _buildMenuButton(
               context: context,
               label: 'VS AI',
@@ -35,7 +81,8 @@ class HomeScreen extends ConsumerWidget {
               onPressed: () {
                 ref
                     .read(gameNotifierProvider.notifier)
-                    .startGame(['You'], withAI: true);
+                    .startGame(['You'],
+                        withAI: true, targetHands: _selectedHands);
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const GameScreen()),
                 );
@@ -49,14 +96,40 @@ class HomeScreen extends ConsumerWidget {
               onPressed: () {
                 ref
                     .read(gameNotifierProvider.notifier)
-                    .startGame(['Player 1', 'Player 2']);
+                    .startGame(['Player 1', 'Player 2'],
+                        targetHands: _selectedHands);
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const GameScreen()),
                 );
               },
             ),
+            const SizedBox(height: 16),
+            _buildMenuButton(
+              context: context,
+              label: 'LAN Play',
+              icon: Icons.wifi,
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LobbyScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildMenuButton(
+              context: context,
+              label: 'How to Play',
+              icon: Icons.help_outline,
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const TutorialScreen()),
+                );
+              },
+            ),
           ],
         ),
+      ),
+        ],
       ),
     );
   }

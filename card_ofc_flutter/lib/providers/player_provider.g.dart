@@ -44,7 +44,26 @@ final isMyTurnProvider = AutoDisposeProvider<bool>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef IsMyTurnRef = AutoDisposeProviderRef<bool>;
-String _$availableLinesHash() => r'da6297c0b5c89cf4260ed7e082a03492a734455d';
+String _$isFoulRiskHash() => r'6e91d0308da7ae45cd25330970a5b6099b4d4bdd';
+
+/// 현재 플레이어 보드의 Foul 여부
+///
+/// Copied from [isFoulRisk].
+@ProviderFor(isFoulRisk)
+final isFoulRiskProvider = AutoDisposeProvider<bool>.internal(
+  isFoulRisk,
+  name: r'isFoulRiskProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$isFoulRiskHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef IsFoulRiskRef = AutoDisposeProviderRef<bool>;
+String _$availableLinesHash() => r'aeb8876969e087bf822bb74aa58f1d915b21a94e';
 
 /// 현재 플레이어가 배치 가능한 라인 목록
 ///

@@ -30,6 +30,8 @@ class GameState with _$GameState {
     @Default(GamePhase.waiting) GamePhase phase,
     @Default(RoundPhase.initial) RoundPhase roundPhase,
     @Default([]) List<Card> discardPile,
+    @Default(1) int handNumber,
+    @Default(5) int targetHands,
   }) = _GameState;
 
   factory GameState.fromJson(Map<String, dynamic> json) =>

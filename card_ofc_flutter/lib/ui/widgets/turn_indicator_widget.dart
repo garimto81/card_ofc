@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../models/game_state.dart';
 
 class TurnIndicatorWidget extends StatelessWidget {
@@ -30,9 +31,12 @@ class TurnIndicatorWidget extends StatelessWidget {
     }
   }
 
+  bool get _isActive =>
+      phase == GamePhase.placing || phase == GamePhase.dealing;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final indicator = Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.teal[700],
@@ -56,11 +60,19 @@ class TurnIndicatorWidget extends StatelessWidget {
             margin: const EdgeInsets.symmetric(horizontal: 8),
           ),
           Text(
-            '$playerName · $_phaseLabel',
+            '$playerName \u00B7 $_phaseLabel',
             style: const TextStyle(color: Colors.white, fontSize: 13),
           ),
         ],
       ),
     );
+
+    if (_isActive) {
+      return indicator
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .scaleXY(begin: 1.0, end: 1.04, duration: 800.ms, curve: Curves.easeInOut);
+    }
+
+    return indicator;
   }
 }

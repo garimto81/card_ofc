@@ -30,8 +30,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: BoardWidget(board: board)),
       ));
-      expect(find.text('A'), findsOneWidget);
-      expect(find.text('♠'), findsOneWidget);
+      // Allow animate to complete
+      await tester.pump(const Duration(milliseconds: 500));
+      // New card design: rank in top-left + bottom-right (2), suit in top-left + center + bottom-right (3)
+      expect(find.text('A'), findsNWidgets(2));
+      expect(find.text('\u2660'), findsNWidgets(3));
     });
 
     testWidgets('T4: 만석 라인 비활성', (tester) async {
@@ -47,9 +50,11 @@ void main() {
           body: BoardWidget(board: board, availableLines: const ['mid', 'bottom']),
         ),
       ));
-      expect(find.text('A'), findsOneWidget);
-      expect(find.text('K'), findsOneWidget);
-      expect(find.text('Q'), findsOneWidget);
+      // Allow animate to complete
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text('A'), findsNWidgets(2));
+      expect(find.text('K'), findsNWidgets(2));
+      expect(find.text('Q'), findsNWidgets(2));
     });
 
     testWidgets('T5: onCardPlaced 콜백 - DragTarget 존재', (tester) async {

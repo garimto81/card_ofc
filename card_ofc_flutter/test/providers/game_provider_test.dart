@@ -33,12 +33,12 @@ void main() {
       expect(state.players.last.name, 'AI');
     });
 
-    test('T4: dealCards() round 0 → player hand = 5', () {
+    test('T4: startGame → auto deals round 0 → player hand = 5', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(gameNotifierProvider.notifier);
       notifier.startGame(['P1', 'P2']);
-      notifier.dealCards();
+      // startGame이 자동으로 첫 딜링 수행
       final state = container.read(gameNotifierProvider);
       expect(state.players[0].hand.length, 5);
     });
@@ -48,7 +48,7 @@ void main() {
       addTearDown(container.dispose);
       final notifier = container.read(gameNotifierProvider.notifier);
       notifier.startGame(['P1', 'P2']);
-      notifier.dealCards();
+      // startGame이 자동 딜링 — 추가 dealCards 불필요
       final hand = container.read(gameNotifierProvider).players[0].hand;
       final card = hand.first;
       notifier.placeCard(card, 'bottom');
@@ -63,7 +63,7 @@ void main() {
       addTearDown(container.dispose);
       final notifier = container.read(gameNotifierProvider.notifier);
       notifier.startGame(['P1', 'P2']);
-      notifier.dealCards();
+      // startGame이 자동 딜링 — 추가 dealCards 불필요
       final hand = container.read(gameNotifierProvider).players[0].hand;
       final card = hand.first;
       notifier.discardCard(card);

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../models/player.dart';
 import '../models/board.dart';
+import '../logic/foul_checker.dart';
 import 'game_provider.dart';
 
 part 'player_provider.g.dart';
@@ -19,6 +20,14 @@ Player? currentPlayer(Ref ref) {
 bool isMyTurn(Ref ref) {
   final current = ref.watch(currentPlayerProvider);
   return current != null;
+}
+
+/// 현재 플레이어 보드의 Foul 여부
+@riverpod
+bool isFoulRisk(Ref ref) {
+  final player = ref.watch(currentPlayerProvider);
+  if (player == null) return false;
+  return checkFoul(player.board);
 }
 
 /// 현재 플레이어가 배치 가능한 라인 목록

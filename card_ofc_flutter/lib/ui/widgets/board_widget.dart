@@ -29,17 +29,27 @@ class BoardWidget extends StatelessWidget {
     );
   }
 
+  static const _lineHelp = {
+    'top': 'Top (3 cards): High Card, One Pair, Three of a Kind only.',
+    'mid': 'Middle (5 cards): Any poker hand. Must be weaker than Bottom.',
+    'bottom': 'Bottom (5 cards): Any poker hand. Must be your strongest line.',
+  };
+
   Widget _buildLine(
       String label, List<ofc.Card> cards, int maxCards, String lineName) {
     final canAccept = availableLines.contains(lineName);
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        SizedBox(
-          width: 52,
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+        Tooltip(
+          message: _lineHelp[lineName] ?? '',
+          child: SizedBox(
+            width: 52,
+            child: Text(
+              label,
+              style:
+                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            ),
           ),
         ),
         ...List.generate(maxCards, (i) {

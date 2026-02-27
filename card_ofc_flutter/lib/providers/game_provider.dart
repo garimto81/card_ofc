@@ -6,7 +6,7 @@ import '../logic/simple_ai.dart';
 
 part 'game_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 class GameNotifier extends _$GameNotifier {
   late GameController _controller;
   bool _withAI = false;
@@ -17,11 +17,22 @@ class GameNotifier extends _$GameNotifier {
     return const GameState(players: []);
   }
 
-  /// 게임 시작 (AI 대전 옵션 포함)
-  void startGame(List<String> playerNames, {bool withAI = false}) {
+  /// 게임 시작 + 즉시 첫 딜링 (AI 대전 옵션 포함)
+  void startGame(List<String> playerNames, {bool withAI = false, int targetHands = 5}) {
     _withAI = withAI;
     final names = withAI ? [...playerNames, 'AI'] : playerNames;
-    state = _controller.startGame(names);
+    state = _controller.startGame(names, targetHands: targetHands);
+    // 즉시 첫 딜링 수행 — GameScreen 진입 시 바로 핸드 표시
+    _dealForCurrentPlayer();
+  }
+
+  /// 다음 핸드 시작 (multi-hand 지원)
+  void nextHand() {
+    state = _controller.startNextHand();
+    _dealForCurrentPlayer();
+    if (_withAI && _isAITurn()) {
+      _processAITurnSync();
+    }
   }
 
   /// 카드 배치 (Committed Rule: 취소 불가)
@@ -38,23 +49,28 @@ class GameNotifier extends _$GameNotifier {
     if (newState != null) state = newState;
   }
 
-  /// 배치 확정
+  /// 배치 확정 → AI 자동 처리 → 다음 딜링까지 일괄 수행
   void confirmPlacement() {
     final currentPlayerId = state.players[state.currentPlayerIndex].id;
     state = _controller.confirmPlacement(currentPlayerId);
 
-    if (_withAI && _isAITurn()) {
-      _processAITurn();
+    // 스코어링 완료 → FL/gameOver 전환
+    if (state.phase == GamePhase.scoring) {
+      state = _controller.finishHand();
+      return;
     }
-  }
 
-  /// 카드 딜링
-  void dealCards() {
-    final currentPlayerId = state.players[state.currentPlayerIndex].id;
-    if (state.roundPhase == RoundPhase.initial) {
-      state = _controller.dealInitial(currentPlayerId);
-    } else {
-      state = _controller.dealPineapple(currentPlayerId);
+    if (_withAI && _isAITurn()) {
+      // AI 턴: 동기적으로 AI 배치 처리 후 인간에게 딜링
+      _processAITurnSync();
+    }
+
+    // AI 턴 처리 후 (또는 2P 모드) 다음 인간 플레이어에게 딜링
+    if (!_isAITurn() &&
+        state.phase != GamePhase.scoring &&
+        state.phase != GamePhase.fantasyland &&
+        state.phase != GamePhase.gameOver) {
+      _dealForCurrentPlayer();
     }
   }
 
@@ -72,13 +88,28 @@ class GameNotifier extends _$GameNotifier {
   bool get isGameOver => state.phase == GamePhase.gameOver;
 
   bool _isAITurn() {
+    if (state.players.isEmpty) return false;
     final currentPlayer = state.players[state.currentPlayerIndex];
     return currentPlayer.name == 'AI';
   }
 
-  void _processAITurn() {
+  /// 현재 플레이어에게 딜링
+  void _dealForCurrentPlayer() {
+    if (state.players.isEmpty) return;
+    final currentPlayerId = state.players[state.currentPlayerIndex].id;
+    if (state.roundPhase == RoundPhase.initial) {
+      state = _controller.dealInitial(currentPlayerId);
+    } else {
+      state = _controller.dealPineapple(currentPlayerId);
+    }
+  }
+
+  /// AI 턴 동기 처리 (microtask 대신 즉시 실행)
+  void _processAITurnSync() {
+    if (!_isAITurn()) return;
+
     final ai = SimpleAI();
-    dealCards();
+    _dealForCurrentPlayer();
 
     final currentPlayer = state.players[state.currentPlayerIndex];
     final decision = ai.decide(
@@ -93,6 +124,14 @@ class GameNotifier extends _$GameNotifier {
     if (decision.discard != null) {
       discardCard(decision.discard!);
     }
-    confirmPlacement();
+
+    // AI confirm → 라운드 전환
+    final aiId = state.players[state.currentPlayerIndex].id;
+    state = _controller.confirmPlacement(aiId);
+
+    // AI confirm 후 스코어링 → FL/gameOver 전환
+    if (state.phase == GamePhase.scoring) {
+      state = _controller.finishHand();
+    }
   }
 }

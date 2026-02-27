@@ -24,6 +24,8 @@ _$GameStateImpl _$$GameStateImplFromJson(Map<String, dynamic> json) =>
               ?.map((e) => Card.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
+      handNumber: (json['handNumber'] as num?)?.toInt() ?? 1,
+      targetHands: (json['targetHands'] as num?)?.toInt() ?? 5,
     );
 
 Map<String, dynamic> _$$GameStateImplToJson(_$GameStateImpl instance) =>
@@ -34,6 +36,8 @@ Map<String, dynamic> _$$GameStateImplToJson(_$GameStateImpl instance) =>
       'phase': _$GamePhaseEnumMap[instance.phase]!,
       'roundPhase': _$RoundPhaseEnumMap[instance.roundPhase]!,
       'discardPile': instance.discardPile,
+      'handNumber': instance.handNumber,
+      'targetHands': instance.targetHands,
     };
 
 const _$GamePhaseEnumMap = {

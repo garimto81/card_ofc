@@ -27,6 +27,8 @@ mixin _$GameState {
   GamePhase get phase => throw _privateConstructorUsedError;
   RoundPhase get roundPhase => throw _privateConstructorUsedError;
   List<Card> get discardPile => throw _privateConstructorUsedError;
+  int get handNumber => throw _privateConstructorUsedError;
+  int get targetHands => throw _privateConstructorUsedError;
 
   /// Serializes this GameState to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -50,6 +52,8 @@ abstract class $GameStateCopyWith<$Res> {
     GamePhase phase,
     RoundPhase roundPhase,
     List<Card> discardPile,
+    int handNumber,
+    int targetHands,
   });
 }
 
@@ -74,6 +78,8 @@ class _$GameStateCopyWithImpl<$Res, $Val extends GameState>
     Object? phase = null,
     Object? roundPhase = null,
     Object? discardPile = null,
+    Object? handNumber = null,
+    Object? targetHands = null,
   }) {
     return _then(
       _value.copyWith(
@@ -101,6 +107,14 @@ class _$GameStateCopyWithImpl<$Res, $Val extends GameState>
                 ? _value.discardPile
                 : discardPile // ignore: cast_nullable_to_non_nullable
                       as List<Card>,
+            handNumber: null == handNumber
+                ? _value.handNumber
+                : handNumber // ignore: cast_nullable_to_non_nullable
+                      as int,
+            targetHands: null == targetHands
+                ? _value.targetHands
+                : targetHands // ignore: cast_nullable_to_non_nullable
+                      as int,
           )
           as $Val,
     );
@@ -123,6 +137,8 @@ abstract class _$$GameStateImplCopyWith<$Res>
     GamePhase phase,
     RoundPhase roundPhase,
     List<Card> discardPile,
+    int handNumber,
+    int targetHands,
   });
 }
 
@@ -146,6 +162,8 @@ class __$$GameStateImplCopyWithImpl<$Res>
     Object? phase = null,
     Object? roundPhase = null,
     Object? discardPile = null,
+    Object? handNumber = null,
+    Object? targetHands = null,
   }) {
     return _then(
       _$GameStateImpl(
@@ -173,6 +191,14 @@ class __$$GameStateImplCopyWithImpl<$Res>
             ? _value._discardPile
             : discardPile // ignore: cast_nullable_to_non_nullable
                   as List<Card>,
+        handNumber: null == handNumber
+            ? _value.handNumber
+            : handNumber // ignore: cast_nullable_to_non_nullable
+                  as int,
+        targetHands: null == targetHands
+            ? _value.targetHands
+            : targetHands // ignore: cast_nullable_to_non_nullable
+                  as int,
       ),
     );
   }
@@ -188,6 +214,8 @@ class _$GameStateImpl implements _GameState {
     this.phase = GamePhase.waiting,
     this.roundPhase = RoundPhase.initial,
     final List<Card> discardPile = const [],
+    this.handNumber = 1,
+    this.targetHands = 5,
   }) : _players = players,
        _discardPile = discardPile;
 
@@ -224,8 +252,15 @@ class _$GameStateImpl implements _GameState {
   }
 
   @override
+  @JsonKey()
+  final int handNumber;
+  @override
+  @JsonKey()
+  final int targetHands;
+
+  @override
   String toString() {
-    return 'GameState(players: $players, currentRound: $currentRound, currentPlayerIndex: $currentPlayerIndex, phase: $phase, roundPhase: $roundPhase, discardPile: $discardPile)';
+    return 'GameState(players: $players, currentRound: $currentRound, currentPlayerIndex: $currentPlayerIndex, phase: $phase, roundPhase: $roundPhase, discardPile: $discardPile, handNumber: $handNumber, targetHands: $targetHands)';
   }
 
   @override
@@ -244,7 +279,11 @@ class _$GameStateImpl implements _GameState {
             const DeepCollectionEquality().equals(
               other._discardPile,
               _discardPile,
-            ));
+            ) &&
+            (identical(other.handNumber, handNumber) ||
+                other.handNumber == handNumber) &&
+            (identical(other.targetHands, targetHands) ||
+                other.targetHands == targetHands));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -257,6 +296,8 @@ class _$GameStateImpl implements _GameState {
     phase,
     roundPhase,
     const DeepCollectionEquality().hash(_discardPile),
+    handNumber,
+    targetHands,
   );
 
   /// Create a copy of GameState
@@ -281,6 +322,8 @@ abstract class _GameState implements GameState {
     final GamePhase phase,
     final RoundPhase roundPhase,
     final List<Card> discardPile,
+    final int handNumber,
+    final int targetHands,
   }) = _$GameStateImpl;
 
   factory _GameState.fromJson(Map<String, dynamic> json) =
@@ -298,6 +341,10 @@ abstract class _GameState implements GameState {
   RoundPhase get roundPhase;
   @override
   List<Card> get discardPile;
+  @override
+  int get handNumber;
+  @override
+  int get targetHands;
 
   /// Create a copy of GameState
   /// with the given fields replaced by the non-null parameter values.

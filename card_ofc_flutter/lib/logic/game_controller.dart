@@ -9,10 +9,12 @@ import 'scoring.dart';
 /// OFC Pineapple GameController
 ///
 /// 모든 public 메서드는 GameState를 반환한다. void 반환 금지.
-/// Committed Rule: placeCard 후 취소 불가 (removeCard 공개 API 없음)
+/// Confirm 전 취소 가능 (§2.3): placeCard/discardCard 후 confirmPlacement 전까지 undo 허용
 class GameController {
   GameState _state;
   final Deck _deck;
+  List<({Card card, String line})> _currentTurnPlacements = [];
+  Card? _currentTurnDiscard;
 
   GameController({Deck? deck})
       : _deck = deck ?? Deck(),
@@ -83,10 +85,10 @@ class GameController {
   }
 
   // ──────────────────────────────────────────────
-  // 배치 (Committed Rule)
+  // 배치 (Confirm 전 취소 가능)
   // ──────────────────────────────────────────────
 
-  /// 카드 배치: Committed Rule 강제 (배치 후 취소 불가)
+  /// 카드 배치: Confirm 전 취소 가능 (§2.3)
   /// 반환값: 성공 시 업데이트된 GameState, 실패 시 null (만석 라인, 핸드에 없는 카드 등)
   GameState? placeCard(String playerId, Card card, String line) {
     final player = _getPlayer(playerId);
@@ -101,6 +103,7 @@ class GameController {
     final newHand = List<Card>.from(player.hand)..remove(card);
     final updatedPlayer = player.copyWith(board: newBoard, hand: newHand);
 
+    _currentTurnPlacements.add((card: card, line: line));
     return _replacePlayer(updatedPlayer);
   }
 
@@ -116,6 +119,7 @@ class GameController {
 
     _state = _replacePlayer(updatedPlayer)
         .copyWith(discardPile: newDiscard);
+    _currentTurnDiscard = card;
     return _state;
   }
 
@@ -132,11 +136,72 @@ class GameController {
   }
 
   // ──────────────────────────────────────────────
+  // Undo (Confirm 전 취소)
+  // ──────────────────────────────────────────────
+
+  /// 단일 카드 배치 취소: 보드에서 제거, 핸드에 복원
+  /// 반환값: 성공 시 업데이트된 GameState, 실패 시 null
+  GameState? undoPlaceCard(String playerId, Card card, String line) {
+    final idx = _currentTurnPlacements.indexWhere(
+      (p) => p.card == card && p.line == line,
+    );
+    if (idx == -1) return null;
+
+    final player = _getPlayer(playerId);
+    final newBoard = player.board.removeCard(line, card);
+    final newHand = [...player.hand, card];
+    final updatedPlayer = player.copyWith(board: newBoard, hand: newHand);
+
+    _currentTurnPlacements.removeAt(idx);
+    return _replacePlayer(updatedPlayer);
+  }
+
+  /// 버림 취소: discardPile에서 제거, 핸드에 복원
+  /// 반환값: 성공 시 GameState, 실패 시 null
+  GameState? undoDiscard(String playerId) {
+    if (_currentTurnDiscard == null) return null;
+
+    final card = _currentTurnDiscard!;
+    final player = _getPlayer(playerId);
+    final newHand = [...player.hand, card];
+    final updatedPlayer = player.copyWith(hand: newHand);
+    final newDiscard = List<Card>.from(_state.discardPile)..remove(card);
+
+    _currentTurnDiscard = null;
+    _state = _replacePlayer(updatedPlayer).copyWith(discardPile: newDiscard);
+    return _state;
+  }
+
+  /// 현재 턴 모든 배치/버림 일괄 취소
+  GameState undoAllCurrentTurn(String playerId) {
+    // 먼저 discard 취소
+    if (_currentTurnDiscard != null) {
+      undoDiscard(playerId);
+    }
+    // 모든 placement를 역순으로 취소
+    for (final p in _currentTurnPlacements.reversed.toList()) {
+      undoPlaceCard(playerId, p.card, p.line);
+    }
+    _currentTurnPlacements = [];
+    _currentTurnDiscard = null;
+    return _state;
+  }
+
+  /// 현재 턴 배치 추적 (읽기 전용)
+  List<({Card card, String line})> get currentTurnPlacements =>
+      List.unmodifiable(_currentTurnPlacements);
+
+  /// 현재 턴 버림 카드
+  Card? get currentTurnDiscard => _currentTurnDiscard;
+
+  // ──────────────────────────────────────────────
   // 배치 확정 및 페이즈 전환
   // ──────────────────────────────────────────────
 
   /// 현재 플레이어 배치 완료 확인 → 다음 플레이어/라운드 전환
   GameState confirmPlacement(String playerId) {
+    _currentTurnPlacements = [];
+    _currentTurnDiscard = null;
     final nextPlayerIndex =
         (_state.currentPlayerIndex + 1) % _state.players.length;
     final isLastPlayer = nextPlayerIndex == 0;

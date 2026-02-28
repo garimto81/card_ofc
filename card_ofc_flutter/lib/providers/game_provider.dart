@@ -35,7 +35,7 @@ class GameNotifier extends _$GameNotifier {
     }
   }
 
-  /// 카드 배치 (Committed Rule: 취소 불가)
+  /// 카드 배치 (Confirm 전 취소 가능)
   void placeCard(Card card, String line) {
     final currentPlayerId = state.players[state.currentPlayerIndex].id;
     final newState = _controller.placeCard(currentPlayerId, card, line);
@@ -48,6 +48,33 @@ class GameNotifier extends _$GameNotifier {
     final newState = _controller.discardCard(currentPlayerId, card);
     if (newState != null) state = newState;
   }
+
+  /// 단일 카드 배치 취소
+  void undoPlaceCard(Card card, String line) {
+    final currentPlayerId = state.players[state.currentPlayerIndex].id;
+    final newState = _controller.undoPlaceCard(currentPlayerId, card, line);
+    if (newState != null) state = newState;
+  }
+
+  /// 버림 취소
+  void undoDiscard() {
+    final currentPlayerId = state.players[state.currentPlayerIndex].id;
+    final newState = _controller.undoDiscard(currentPlayerId);
+    if (newState != null) state = newState;
+  }
+
+  /// 현재 턴 모든 배치/버림 일괄 취소
+  void undoAllCurrentTurn() {
+    final currentPlayerId = state.players[state.currentPlayerIndex].id;
+    state = _controller.undoAllCurrentTurn(currentPlayerId);
+  }
+
+  /// 현재 턴 배치 추적 (읽기 전용)
+  List<({Card card, String line})> get currentTurnPlacements =>
+      _controller.currentTurnPlacements;
+
+  /// 현재 턴 버림 카드
+  Card? get currentTurnDiscard => _controller.currentTurnDiscard;
 
   /// 배치 확정 → AI 자동 처리 → 다음 딜링까지 일괄 수행
   void confirmPlacement() {

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../models/player.dart';
+import '../models/card.dart';
 import '../models/board.dart';
 import '../logic/foul_checker.dart';
 import 'game_provider.dart';
@@ -43,4 +44,11 @@ List<String> availableLines(Ref ref) {
     lines.add('bottom');
   }
   return lines;
+}
+
+/// 현재 턴 배치 추적 (undo 용)
+@riverpod
+List<({Card card, String line})> currentTurnPlacements(Ref ref) {
+  ref.watch(gameNotifierProvider); // rebuild trigger
+  return ref.watch(gameNotifierProvider.notifier).currentTurnPlacements;
 }

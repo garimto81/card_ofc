@@ -7,12 +7,16 @@ class BoardWidget extends StatelessWidget {
   final OFCBoard board;
   final List<String> availableLines;
   final void Function(ofc.Card card, String line)? onCardPlaced;
+  final List<({ofc.Card card, String line})> currentTurnPlacements;
+  final void Function(ofc.Card card, String line)? onUndoCard;
 
   const BoardWidget({
     super.key,
     required this.board,
     this.availableLines = const ['top', 'mid', 'bottom'],
     this.onCardPlaced,
+    this.currentTurnPlacements = const [],
+    this.onUndoCard,
   });
 
   @override
@@ -53,6 +57,9 @@ class BoardWidget extends StatelessWidget {
           ),
         ),
         ...List.generate(maxCards, (i) {
+          final isUndoable = i < cards.length &&
+              currentTurnPlacements
+                  .any((p) => p.card == cards[i] && p.line == lineName);
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
             child: LineSlotWidget(
@@ -60,6 +67,10 @@ class BoardWidget extends StatelessWidget {
               lineName: lineName,
               canAccept: canAccept && i >= cards.length,
               onCardDropped: (card) => onCardPlaced?.call(card, lineName),
+              isUndoable: isUndoable,
+              onUndoTap: isUndoable
+                  ? () => onUndoCard?.call(cards[i], lineName)
+                  : null,
             ),
           );
         }),

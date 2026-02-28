@@ -4,6 +4,7 @@ import 'package:card_ofc_flutter/providers/game_provider.dart';
 import 'package:card_ofc_flutter/providers/player_provider.dart';
 import 'package:card_ofc_flutter/providers/score_provider.dart';
 import 'package:card_ofc_flutter/models/game_state.dart';
+import 'package:card_ofc_flutter/models/card.dart';
 
 void main() {
   group('GameNotifier', () {
@@ -129,6 +130,101 @@ void main() {
       addTearDown(container.dispose);
       container.read(gameNotifierProvider.notifier).startGame(['P1', 'P2']);
       expect(container.read(roundScoresProvider), isNull);
+    });
+  });
+
+  group('Undo', () {
+    test('T9: undoPlaceCard → 보드에서 제거, 핸드에 복귀', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(gameNotifierProvider.notifier);
+      notifier.startGame(['P1', 'P2']);
+
+      final hand = container.read(gameNotifierProvider).players[0].hand;
+      final card = hand.first;
+      final handLenBefore = hand.length;
+
+      notifier.placeCard(card, 'bottom');
+      // 배치 후: 핸드 -1, 보드에 카드 있음
+      var state = container.read(gameNotifierProvider);
+      expect(state.players[0].hand.length, handLenBefore - 1);
+      expect(state.players[0].board.bottom.contains(card), isTrue);
+
+      notifier.undoPlaceCard(card, 'bottom');
+      // undo 후: 핸드에 복귀, 보드에서 제거
+      state = container.read(gameNotifierProvider);
+      expect(state.players[0].hand.length, handLenBefore);
+      expect(state.players[0].hand.contains(card), isTrue);
+      expect(state.players[0].board.bottom.contains(card), isFalse);
+    });
+
+    test('T10: undoDiscard → 핸드에 복귀', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(gameNotifierProvider.notifier);
+      notifier.startGame(['P1', 'P2']);
+
+      final hand = container.read(gameNotifierProvider).players[0].hand;
+      final card = hand.first;
+      final handLenBefore = hand.length;
+
+      notifier.discardCard(card);
+      var state = container.read(gameNotifierProvider);
+      expect(state.players[0].hand.length, handLenBefore - 1);
+      expect(state.discardPile.contains(card), isTrue);
+
+      notifier.undoDiscard();
+      state = container.read(gameNotifierProvider);
+      expect(state.players[0].hand.length, handLenBefore);
+      expect(state.players[0].hand.contains(card), isTrue);
+      expect(state.discardPile.contains(card), isFalse);
+    });
+
+    test('T11: undoAllCurrentTurn → 모든 배치/버림 취소', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(gameNotifierProvider.notifier);
+      notifier.startGame(['P1', 'P2']);
+
+      final hand = container.read(gameNotifierProvider).players[0].hand;
+      final handLenBefore = hand.length;
+      final card1 = hand[0];
+      final card2 = hand[1];
+      final card3 = hand[2];
+
+      // 2장 배치 + 1장 버림
+      notifier.placeCard(card1, 'bottom');
+      notifier.placeCard(card2, 'mid');
+      notifier.discardCard(card3);
+
+      var state = container.read(gameNotifierProvider);
+      expect(state.players[0].hand.length, handLenBefore - 3);
+
+      notifier.undoAllCurrentTurn();
+      state = container.read(gameNotifierProvider);
+      expect(state.players[0].hand.length, handLenBefore);
+      expect(state.players[0].board.bottom.contains(card1), isFalse);
+      expect(state.players[0].board.mid.contains(card2), isFalse);
+      expect(state.discardPile.contains(card3), isFalse);
+    });
+
+    test('T12: confirm 후 undo 불가 (이전 턴 카드)', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(gameNotifierProvider.notifier);
+      notifier.startGame(['P1', 'P2']);
+
+      final hand = container.read(gameNotifierProvider).players[0].hand;
+      final card = hand.first;
+      notifier.placeCard(card, 'bottom');
+
+      // confirm: 추적 초기화 → 다음 플레이어로 전환
+      notifier.confirmPlacement();
+
+      // P2 턴으로 전환됨 — P1의 카드에 대해 undo 시도
+      // currentTurnPlacements가 비어있으므로 undo 불가
+      expect(notifier.currentTurnPlacements, isEmpty);
+      expect(notifier.currentTurnDiscard, isNull);
     });
   });
 }

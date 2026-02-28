@@ -108,10 +108,11 @@ graph LR
 
 ### 2.3 Committed Rule
 
-배치된 카드는 이동하거나 제거할 수 없다.
+**Confirm 이후** 배치된 카드는 이동하거나 제거할 수 없다.
 
 - 라인 정원(Top=3, Mid=5, Bottom=5)에 도달하면 추가 배치 불가
-- 라운드 내 배치 순서는 자유이나, 배치 완료 후 취소 불가
+- **Confirm 전 취소 가능** (§2.11 참조): 현재 턴에 배치한 카드는 Confirm 버튼을 누르기 전까지 취소하여 핸드로 되돌릴 수 있다
+- Confirm 이후에는 취소 불가 (영구 확정)
 - Fantasyland에서도 동일하게 적용
 
 ### 2.4 Foul 규칙
@@ -245,7 +246,35 @@ Royalty는 각 라인에서 조건을 충족하는 핸드에 부여되는 추가
 
 > Layer 0 이후 레이어에서 커스텀 수트 순환 우위를 추가할 수 있다.
 
-### 2.10 Top 3장 핸드 규칙
+### 2.10 Turn UX: Inline Discard + Undo
+
+#### 2.10.1 Inline Discard (Pineapple Phase)
+
+Pineapple 라운드(Round 1~4)에서 3장 중 1장을 버릴 때, 별도의 고정 discard 존을 사용하지 않는다.
+
+- 핸드의 각 카드 아래에 **Discard 버튼**이 직접 표시된다
+- 플레이어가 해당 카드의 Discard 버튼을 탭하면 즉시 버림 처리
+- 이미 1장을 버린 경우 나머지 카드의 Discard 버튼은 비활성화
+- Round 0(5장 전부 배치)에서는 Discard 버튼 미표시
+
+#### 2.10.2 Undo (Confirm 전 취소)
+
+현재 턴에서 배치 또는 버림한 카드를 Confirm 전에 취소할 수 있다.
+
+**배치 취소**:
+- 보드에 이번 턴에 배치한 카드를 탭하면 취소 → 핸드로 복귀
+- 이전 턴에 배치한 카드(이미 Confirm된 카드)는 취소 불가
+- 이번 턴에 배치한 카드는 시각적으로 구분 표시 (펄스 테두리)
+
+**버림 취소**:
+- Undo 버튼으로 버림 취소 가능 → 카드가 핸드로 복귀
+- 배치 + 버림 전체를 한 번에 되돌리는 "Reset Turn" 버튼 제공
+
+**제약사항**:
+- Confirm 이후에는 모든 취소 불가 (Committed Rule §2.3)
+- AI 플레이어에게는 undo 미적용
+
+### 2.11 Top 3장 핸드 규칙
 
 Top 라인은 3장으로 구성되므로 포커 핸드 종류가 제한된다.
 
@@ -366,10 +395,12 @@ class GameState with _$GameState {
 | **네트워크** | mDNS 게임 검색 (bonsoir) | 예정 | |
 | | WebSocket 상태 동기화 | 예정 | |
 | | 호스트 서버 구현 | 예정 | |
-| **UI** | 보드 화면 (3라인) | 예정 | Flutter + Rive |
-| | 카드 드래그 앤 드롭 배치 | 예정 | |
-| | 점수 결과 화면 | 예정 | |
-| | Fantasyland 특수 화면 | 예정 | |
+| **UI** | 보드 화면 (3라인) | 완료 | BoardWidget |
+| | 카드 드래그 앤 드롭 배치 | 완료 | LineSlotWidget |
+| | 점수 결과 화면 | 완료 | ScoreScreen |
+| | Fantasyland 특수 화면 | 완료 | GameScreen FL badge |
+| | Inline Discard 버튼 | 완료 | HandWidget §2.10.1 |
+| | Undo 배치/버림 취소 | 완료 | §2.10.2 |
 
 ### 4.2 Python POC 재사용 가능 로직
 
@@ -390,4 +421,5 @@ class GameState with _$GameState {
 
 | 날짜 | 버전 | 변경 내용 | 결정 근거 |
 |------|------|-----------|----------|
+| 2026-02-28 | v1.1 | §2.3 Committed Rule 수정 (Confirm 전 취소 허용), §2.10 Inline Discard + Undo 추가 | 디지털 게임 UX 편의성 강화 |
 | 2026-02-27 | v1.0 | 최초 작성 | Layer 분리 접근으로 PRD v4.0 모순 22개 해결 |

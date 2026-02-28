@@ -82,5 +82,27 @@ final availableLinesProvider = AutoDisposeProvider<List<String>>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef AvailableLinesRef = AutoDisposeProviderRef<List<String>>;
+String _$currentTurnPlacementsHash() =>
+    r'aa283e89de859c6e5c6aefd9ec392cd49fab628a';
+
+/// 현재 턴 배치 추적 (undo 용)
+///
+/// Copied from [currentTurnPlacements].
+@ProviderFor(currentTurnPlacements)
+final currentTurnPlacementsProvider =
+    AutoDisposeProvider<List<({Card card, String line})>>.internal(
+      currentTurnPlacements,
+      name: r'currentTurnPlacementsProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$currentTurnPlacementsHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef CurrentTurnPlacementsRef =
+    AutoDisposeProviderRef<List<({Card card, String line})>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

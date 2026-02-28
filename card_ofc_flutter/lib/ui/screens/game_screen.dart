@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../models/card.dart' as ofc;
 import '../../models/game_state.dart';
+import '../../models/card.dart' as ofc;
 import '../../providers/game_provider.dart';
 import '../../providers/player_provider.dart';
 import '../widgets/board_widget.dart';
@@ -21,21 +20,15 @@ class GameScreen extends ConsumerStatefulWidget {
 }
 
 class _GameScreenState extends ConsumerState<GameScreen> {
-  ofc.Card? _selectedDiscard;
-
-  // startGame()에서 이미 딜링 완료 — initState에서 추가 딜링 불필요
-
   void _onCardPlaced(ofc.Card card, String line) {
     ref.read(gameNotifierProvider.notifier).placeCard(card, line);
   }
 
   void _onDiscard(ofc.Card card) {
-    setState(() => _selectedDiscard = card);
     ref.read(gameNotifierProvider.notifier).discardCard(card);
   }
 
   void _onConfirm() {
-    setState(() => _selectedDiscard = null);
     final notifier = ref.read(gameNotifierProvider.notifier);
     // confirmPlacement가 AI 처리 + 다음 딜링까지 일괄 수행
     notifier.confirmPlacement();
@@ -62,11 +55,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     if (current == null) return false;
 
     if (state.roundPhase == RoundPhase.initial) {
-      // R0: 5장 모두 배치해야 확정 가능
       return current.hand.isEmpty;
     } else {
-      // R1~R4 Pineapple: 3장 중 2장 배치 + 1장 버리기 완료
-      return current.hand.isEmpty && _selectedDiscard != null;
+      return current.hand.isEmpty &&
+          ref.read(gameNotifierProvider.notifier).currentTurnDiscard != null;
     }
   }
 
@@ -94,7 +86,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         .toList();
 
     final isPineapple = gameState.roundPhase == RoundPhase.pineapple;
-    final canDiscard = isPineapple && _selectedDiscard == null;
+    final notifier = ref.watch(gameNotifierProvider.notifier);
+    final hasDiscard = notifier.currentTurnDiscard != null;
+    final hasPlacements = notifier.currentTurnPlacements.isNotEmpty;
 
     return Scaffold(
       backgroundColor: Colors.teal[800],
@@ -189,6 +183,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                   board: currentPlayer.board,
                   availableLines: availableLines,
                   onCardPlaced: _onCardPlaced,
+                  currentTurnPlacements: notifier.currentTurnPlacements,
+                  onUndoCard: (card, line) {
+                    ref.read(gameNotifierProvider.notifier).undoPlaceCard(card, line);
+                  },
                 ),
               ),
             ),
@@ -200,80 +198,32 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               padding: EdgeInsets.symmetric(horizontal: isCompact ? 8 : 16),
               child: HandWidget(
                 cards: currentPlayer.hand,
-                onCardTap: (card) {
-                  if (gameState.roundPhase == RoundPhase.pineapple &&
-                      _selectedDiscard == null) {
-                    _onDiscard(card);
-                  }
-                },
+                showDiscardButtons: isPineapple,
+                hasDiscarded: hasDiscard,
+                onDiscard: _onDiscard,
+                onCardTap: null,
               ),
             ),
 
-            // 버리기 존 + 확인 버튼
+            // Undo All + Confirm 버튼
             Padding(
               padding: EdgeInsets.all(isCompact ? 8 : 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  if (isPineapple)
-                    DragTarget<ofc.Card>(
-                      onWillAcceptWithDetails: (details) =>
-                          _selectedDiscard == null,
-                      onAcceptWithDetails: (details) =>
-                          _onDiscard(details.data),
-                      builder: (context, candidateData, rejectedData) {
-                        final isHovering = candidateData.isNotEmpty;
-                        final hasDiscard = _selectedDiscard != null;
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: isCompact ? 56 : 70,
-                          height: 70,
-                          decoration: BoxDecoration(
-                            color: hasDiscard
-                                ? Colors.red[50]
-                                : (isHovering
-                                    ? Colors.red[100]
-                                    : Colors.transparent),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: hasDiscard
-                                  ? Colors.red
-                                  : (isHovering
-                                      ? Colors.red
-                                      : (canDiscard
-                                          ? Colors.red[300]!
-                                          : Colors.red[200]!)),
-                              width: isHovering || canDiscard ? 2 : 1,
-                            ),
-                          ),
-                          child: Center(
-                            child: hasDiscard
-                                ? const Icon(Icons.delete,
-                                    color: Colors.red, size: 24)
-                                : Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.delete_outline,
-                                          color: canDiscard
-                                              ? Colors.red[300]
-                                              : Colors.red[200],
-                                          size: 20),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Discard',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          color: canDiscard
-                                              ? Colors.red[300]
-                                              : Colors.red[200],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                        );
+                  if (hasPlacements || hasDiscard)
+                    TextButton.icon(
+                      onPressed: () {
+                        ref.read(gameNotifierProvider.notifier).undoAllCurrentTurn();
                       },
-                    ),
+                      icon: Icon(Icons.undo, color: Colors.amber[300], size: 18),
+                      label: Text('Undo All',
+                          style: TextStyle(
+                              color: Colors.amber[300],
+                              fontSize: isCompact ? 12 : 14)),
+                    )
+                  else
+                    const SizedBox.shrink(),
                   const Spacer(),
                   ElevatedButton(
                     onPressed: _canConfirm() ? _onConfirm : null,

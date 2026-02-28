@@ -99,38 +99,3 @@ class TestPineappleAutoDiscard:
         # 직접 auto_discard_pineapple 호출
         p.auto_discard_pineapple()
         assert len(p.pineapple_cards) == 0
-
-
-class TestPineappleSerialization:
-    def test_pineapple_cards_serialized(self):
-        """pineapple_cards가 JSON 직렬화됨"""
-        from web.serializer import serialize_player
-        state, rm = make_game(2)
-        rm.start_prep_phase()
-        p = state.players[0]
-        data = serialize_player(p, 0)
-        assert "pineapple_cards" in data
-        assert isinstance(data["pineapple_cards"], list)
-        assert len(data["pineapple_cards"]) == len(p.pineapple_cards)
-
-
-class TestPineappleWebAPI:
-    def test_pineapple_pick_action(self):
-        """POST /api/action pineapple_pick 정상 처리"""
-        import sys, os
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-        from web.app import app
-        client = app.test_client()
-        # 게임 시작
-        client.post('/api/start', json={"num_players": 2})
-        # 상태 조회 후 pineapple_cards 확인
-        resp = client.get('/api/state')
-        state = resp.get_json()
-        p0 = state["state"]["players"][0]
-        if len(p0.get("pineapple_cards", [])) == 3:
-            resp = client.post('/api/action', json={
-                "player_id": 0,
-                "action_type": "pineapple_pick",
-                "indices": [0, 1]
-            })
-            assert resp.status_code == 200

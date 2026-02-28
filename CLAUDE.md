@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **PRD**: `docs/01-plan/card-autochess.prd.md` (v3.0, 1,438줄)
 - **기술 설계**: `docs/02-design/poc.design.md`
-- **현재 단계**: POC 구현 완료 (src/ + cli/ + tests/ 작성됨), QA & 검증 단계
+- **현재 단계**: POC 구현 완료 (src/ + tests/ 작성됨), QA & 검증 단계
 
 ---
 
@@ -29,12 +29,6 @@ pytest tests/test_combat.py -v
 
 # 린트
 ruff check src/ --fix
-
-# POC CLI 실행 (대화형)
-python cli/main.py
-
-# POC CLI 자동 모드 (Enter 없이 전체 진행)
-python cli/main.py --auto
 ```
 
 ---
@@ -44,8 +38,6 @@ python cli/main.py --auto
 ### 레이어 구조
 
 ```
-cli/main.py          ← 사용자 입출력, 게임 루프, 데모 보드 설정
-     |
 src/game.py          ← GameState, RoundManager (라운드/페이즈 관리)
 src/combat.py        ← CombatResolver (3라인 전투 판정, 훌라, 데미지)
      |
@@ -90,7 +82,7 @@ src/pool.py          ← SharedCardPool (카드 풀 관리, 레벨별 드롭률)
 Phase 1 (완료): PRD 작성 → docs/01-plan/card-autochess.prd.md ✅
 Phase 2 (완료): 기술 설계 → docs/02-design/poc.design.md ✅
 Phase 3 (완료): TDD 테스트 작성 → tests/ ✅
-Phase 4 (완료): POC 구현 → src/ + cli/ ✅
+Phase 4 (완료): POC 구현 → src/ ✅
 Phase 5 (진행): QA & 검증
 ```
 

@@ -103,33 +103,3 @@ class TestLevelAffectsShop:
         # random_draw_n(n, level=5) 호출 시 에러 없이 동작 확인
         cards = p.pool.random_draw_n(5, p.level)
         assert isinstance(cards, list)
-
-
-class TestLevelSerialization:
-    def test_level_xp_serialized(self):
-        """level, xp, xp_needed가 JSON 직렬화됨"""
-        from web.serializer import serialize_player
-        p = make_player(gold=20)
-        p.level = 3
-        p.xp = 2
-        data = serialize_player(p, 0)
-        assert "level" in data
-        assert "xp" in data
-        assert data["level"] == 3
-        assert data["xp"] == 2
-
-
-class TestBuyXPWebAPI:
-    def test_buy_xp_action(self):
-        """POST /api/action buy_xp 정상 처리"""
-        import sys, os
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-        from web.app import app
-        client = app.test_client()
-        client.post('/api/start', json={"num_players": 2})
-        # 골드 확보 후 buy_xp
-        resp = client.post('/api/action', json={
-            "player_id": 0,
-            "action_type": "buy_xp"
-        })
-        assert resp.status_code == 200

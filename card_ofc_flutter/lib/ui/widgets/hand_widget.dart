@@ -8,6 +8,8 @@ class HandWidget extends StatelessWidget {
   final bool showDiscardButtons;
   final bool hasDiscarded;
   final void Function(ofc.Card card)? onDiscard;
+  final VoidCallback? onConfirm;
+  final bool canConfirm;
 
   const HandWidget({
     super.key,
@@ -16,15 +18,57 @@ class HandWidget extends StatelessWidget {
     this.showDiscardButtons = false,
     this.hasDiscarded = false,
     this.onDiscard,
+    this.onConfirm,
+    this.canConfirm = false,
   });
 
   @override
   Widget build(BuildContext context) {
     if (cards.isEmpty) {
+      if (canConfirm && onConfirm != null) {
+        return SizedBox(
+          height: showDiscardButtons ? 104 : 80,
+          child: Center(
+            child: ElevatedButton(
+              onPressed: onConfirm,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[600],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: const Text('Confirm', style: TextStyle(fontSize: 16)),
+            ),
+          ),
+        );
+      }
       return const SizedBox(
         height: 70,
         child: Center(
           child: Text('No cards', style: TextStyle(color: Colors.grey)),
+        ),
+      );
+    }
+
+    // FL mode (>5 cards): use Wrap for multi-row layout
+    if (cards.length > 5) {
+      // 70px card height + 4px run spacing per row; 2 rows for up to 17 cards
+      final rows = (cards.length / 9).ceil();
+      final wrapHeight = rows * 74.0 + (rows - 1) * 4.0;
+      return SizedBox(
+        height: wrapHeight,
+        child: Center(
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 4,
+            runSpacing: 4,
+            children: cards.map((card) {
+              return CardWidget(
+                card: card,
+                draggable: true,
+                onTap: () => onCardTap?.call(card),
+              );
+            }).toList(),
+          ),
         ),
       );
     }

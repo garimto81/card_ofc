@@ -221,5 +221,104 @@ void main() {
       // 빈 보드끼리의 scoring — 0점 합산
       expect(state.phase, GamePhase.scoring);
     });
+
+    test('T18: FL — 14장 딜 후 13장 배치 → board.isFull() + hand 1장 잔여', () {
+      final gc = GameController(deck: Deck(seed: 42));
+      gc.startGame(['Alice']);
+      // dealFantasyland: isInFantasyland=false, board empty → fallback 14장
+      var state = gc.dealFantasyland('player_0');
+      expect(state.players[0].hand.length, 14);
+
+      // 13장 배치: top=3, mid=5, bottom=5
+      final hand = List<Card>.from(state.players[0].hand);
+      for (int i = 0; i < 5; i++) {
+        gc.placeCard('player_0', hand[i], 'bottom');
+      }
+      for (int i = 5; i < 10; i++) {
+        gc.placeCard('player_0', hand[i], 'mid');
+      }
+      for (int i = 10; i < 13; i++) {
+        gc.placeCard('player_0', hand[i], 'top');
+      }
+
+      state = gc.state;
+      expect(state.players[0].board.isFull(), isTrue);
+      expect(state.players[0].hand.length, 1);
+      expect(gc.currentTurnPlacements.length, 13);
+    });
+
+    test('T19: FL — 13장 배치 후 undoAllCurrentTurn → 보드 비움, 핸드 14장 복원', () {
+      final gc = GameController(deck: Deck(seed: 42));
+      gc.startGame(['Alice']);
+      var state = gc.dealFantasyland('player_0');
+      final hand = List<Card>.from(state.players[0].hand);
+
+      // 13장 배치
+      for (int i = 0; i < 5; i++) {
+        gc.placeCard('player_0', hand[i], 'bottom');
+      }
+      for (int i = 5; i < 10; i++) {
+        gc.placeCard('player_0', hand[i], 'mid');
+      }
+      for (int i = 10; i < 13; i++) {
+        gc.placeCard('player_0', hand[i], 'top');
+      }
+
+      // Undo All
+      state = gc.undoAllCurrentTurn('player_0');
+      expect(state.players[0].board.isFull(), isFalse);
+      expect(state.players[0].board.totalCards(), 0);
+      expect(state.players[0].hand.length, 14);
+      expect(gc.currentTurnPlacements.length, 0);
+    });
+
+    test('T20: FL — 개별 배치 취소 후 재배치 가능', () {
+      final gc = GameController(deck: Deck(seed: 42));
+      gc.startGame(['Alice']);
+      var state = gc.dealFantasyland('player_0');
+      final hand = List<Card>.from(state.players[0].hand);
+
+      // 3장 배치
+      gc.placeCard('player_0', hand[0], 'bottom');
+      gc.placeCard('player_0', hand[1], 'bottom');
+      gc.placeCard('player_0', hand[2], 'top');
+
+      // 1장 개별 취소
+      state = gc.undoPlaceCard('player_0', hand[2], 'top')!;
+      expect(state.players[0].board.top.length, 0);
+      expect(state.players[0].hand.length, 12); // 14-3+1=12
+      expect(gc.currentTurnPlacements.length, 2);
+
+      // 취소한 카드를 다른 라인에 재배치
+      final result = gc.placeCard('player_0', hand[2], 'mid');
+      expect(result, isNotNull);
+      expect(result!.players[0].board.mid.length, 1);
+    });
+
+    test('T21: FL — 13장 배치 + discardRemainder + confirm → hand 비움', () {
+      final gc = GameController(deck: Deck(seed: 42));
+      gc.startGame(['Alice']);
+      var state = gc.dealFantasyland('player_0');
+      final hand = List<Card>.from(state.players[0].hand);
+
+      // 13장 배치
+      for (int i = 0; i < 5; i++) {
+        gc.placeCard('player_0', hand[i], 'bottom');
+      }
+      for (int i = 5; i < 10; i++) {
+        gc.placeCard('player_0', hand[i], 'mid');
+      }
+      for (int i = 10; i < 13; i++) {
+        gc.placeCard('player_0', hand[i], 'top');
+      }
+
+      // 나머지 1장 자동 버림 → confirm
+      state = gc.discardFantasylandRemainder('player_0');
+      expect(state.players[0].hand.isEmpty, isTrue);
+      expect(state.discardPile.length, 1);
+
+      state = gc.confirmPlacement('player_0');
+      expect(state, isNotNull);
+    });
   });
 }
